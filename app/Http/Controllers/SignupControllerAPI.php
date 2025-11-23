@@ -11,14 +11,16 @@ use Illuminate\Support\Facades\Hash;
 
 class SignupControllerAPI extends Controller
 {
+    // ----------------------------------------User Signup----------------------------------------
+
     public function signup(Request $request)
     {
         $validatedData = $request->validate([
             'full_name' => 'required|string|max:255',
-            'email' => 'required|string|max:255|unique:users, email',
+            'email' => 'required|string|max:255|unique:users,email',
             'password' => 'required|string|min:8|confirmed',
-            'phone' => 'nullable|string|max:15|unique:users, phone',
-            'terms' =>'accepted'
+            'phone' => 'nullable|string|max:15|unique:users,phone',
+            'terms' => 'accepted'
         ]);
 
         $user = User::create([
@@ -45,5 +47,27 @@ class SignupControllerAPI extends Controller
             'message' => 'Registration successful! Please check your email to verify your account.',
             'user' => $user
         ], 201);
+    }
+
+    // ----------------------------------------Mail Verification Notice----------------------------------------
+
+
+    public function mailVerificationNotice()
+    {
+        return view('mail.userVerification');
+    }
+
+    // ----------------------------------------Resend Emaill  ----------------------------------------
+
+
+    public function resendVerificationEmail(Request $request)
+    {
+        if ($request->user()->hasVerifiedEmail()) {
+            return redirect()->route('dashboard');
+        }
+
+        $request->user()->sendEmailVerificationNotification();
+
+        return back()->with('message', 'Verification link sent!');
     }
 }
