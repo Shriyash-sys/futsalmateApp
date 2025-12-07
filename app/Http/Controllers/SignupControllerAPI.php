@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Database\QueryException;
 
 class SignupControllerAPI extends Controller
 {
@@ -15,59 +16,68 @@ class SignupControllerAPI extends Controller
 
     public function signup(Request $request)
     {
-        $validatedData = $request->validate([
-            'full_name' => 'required|string|max:255',
-            'email' => 'required|string|max:255|unique:users,email',
-            'password' => 'required|string|min:8|confirmed',
-            'phone' => 'nullable|string|max:15|unique:users,phone',
-            'terms' => 'accepted'
-        ]);
-
-        $user = User::create([
-            'full_name' => $validatedData['full_name'],
-            'email' => $validatedData['email'],
-            'password' => Hash::make($validatedData['password']),
-            'phone' => $validatedData['phone'] ?? null,
-        ]);
-
-        Auth::login($user);
-
         try {
-            $user->sendEmailVerificationNotification();
-        } catch (Exception $e) {
-            Log::error('Verification email failed to send: ' .$e->getMessage());
-            return response()->json([
-                'status' => 'warning',
-                'message' => 'Registered, but verification email failed. Please try again later.'
-            ], 200);
-        }
+            $validatedData = $request->validate([
+                'full_name' => 'required|string|max:255',
+                'email' => 'required|string|max:255|unique:users,email',
+                'password' => 'required|string|min:8|confirmed',
+                'phone' => 'nullable|string|max:15|unique:users,phone',
+                'terms' => 'accepted'
+            ]);
 
-        return response()->json([
-            'status' => 'success',
-            'message' => 'Registration successful! Please check your email to verify your account.',
-            'user' => $user
-        ], 201);
+            $user = User::create([
+                'full_name' => $validatedData['full_name'],
+                'email' => $validatedData['email'],
+                'password' => Hash::make($validatedData['password']),
+                'phone' => $validatedData['phone'] ?? null,
+            ]);
+
+            Auth::login($user);
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Registration successful!',
+                'user' => $user
+            ], 201);
+        } catch (QueryException $e) {
+            Log::error('Database error during signup: ' . $e->getMessage());
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Registration failed. Please try again.',
+                'errors' => [
+                    'general' => ['An error occurred while creating your account.']
+                ]
+            ], 500);
+        } catch (Exception $e) {
+            Log::error('Error during signup: ' . $e->getMessage());
+            return response()->json([
+                'status' => 'error',
+                'message' => 'An unexpected error occurred. Please try again.',
+                'errors' => [
+                    'general' => ['Registration failed. Please try again later.']
+                ]
+            ], 500);
+        }
     }
 
     // ----------------------------------------Mail Verification Notice----------------------------------------
 
+    // public function mailVerificationNotice()
+    // {
+    //     return view('mail.userVerification');
+    // }
 
-    public function mailVerificationNotice()
-    {
-        return view('mail.userVerification');
-    }
-
-    // ----------------------------------------Resend Emaill  ----------------------------------------
+    // // ----------------------------------------Resend Emaill  ----------------------------------------
 
 
-    public function resendVerificationEmail(Request $request)
-    {
-        if ($request->user()->hasVerifiedEmail()) {
-            return redirect()->route('dashboard');
-        }
+    // public function resendVerificationEmail(Request $request)
+    // {
+    //     if ($request->user()->hasVerifiedEmail()) {
+    //         return redirect()->route('dashboard');
+    //     }
 
-        $request->user()->sendEmailVerificationNotification();
+    //     $request->user()->sendEmailVerificationNotification();
 
-        return back()->with('message', 'Verification link sent!');
-    }
+    //     return back()->with('message', 'Verification link sent!');
+    // }
 }
