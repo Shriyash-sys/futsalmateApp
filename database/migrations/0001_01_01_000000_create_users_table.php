@@ -17,7 +17,7 @@ return new class extends Migration
             $table->string('email')->unique();
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
-            $table->string('phone')->unique();
+            $table->string('phone')->unique()->nullable();
             $table->boolean('terms')->comment('1=true, 0=false')->default(false);
             $table->string('profile_photo_path')->nullable();
             $table->string('profile_photo_url')->nullable();
