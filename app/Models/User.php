@@ -25,10 +25,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'phone',
         'terms',
         'profile_photo',
-        'remember',
-        'user_type',
-        'vendor_id',
-        'admin_id'
+        'remember'
     ];
 
     /**
@@ -36,12 +33,12 @@ class User extends Authenticatable implements MustVerifyEmail
      */
     public function vendor()
     {
-        return $this->belongsTo(\App\Models\Vendor::class);
+        return $this->belongsTo(Vendor::class);
     }
 
     public function admin()
     {
-        return $this->belongsTo(\App\Models\Admin::class);
+        return $this->belongsTo(Admin::class);
     }
 
     /**

@@ -2,10 +2,11 @@
 
 namespace App\Notifications;
 
-use Illuminate\Auth\Notifications\VerifyEmail as VerifyEmailBase;
-use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\Config;
+use Illuminate\Notifications\Messages\MailMessage;
+use Illuminate\Auth\Notifications\VerifyEmail as VerifyEmailBase;
 
 class VendorVerifyEmail extends VerifyEmailBase
 {
@@ -25,5 +26,17 @@ class VendorVerifyEmail extends VerifyEmailBase
             $expiration,
             ['id' => $notifiable->getKey(), 'hash' => sha1($notifiable->email)]
         );
+    }
+
+    public function toMail($notifiable)
+    {
+        $url = $this->verificationUrl($notifiable);
+
+        return (new MailMessage)
+            ->subject('Verify your vendor account — Futsalmate')
+            ->greeting('Hello!', $notifiable->vendor->name)
+            ->line('Thanks for signing up as a vendor. Click the button below to verify your email.')
+            ->action('Verify Email', $url)
+            ->line('If you did not sign up, ignore this message.');
     }
 }

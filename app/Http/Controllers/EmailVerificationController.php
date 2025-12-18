@@ -2,14 +2,17 @@
 
 namespace App\Http\Controllers;
 
+use Exception;
 use App\Models\User;
-use Illuminate\Http\Request;
-use Illuminate\Auth\Events\Verified;
-use Illuminate\Support\Facades\Log;
 use App\Models\Vendor;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Auth\Events\Verified;
 
 class EmailVerificationController extends Controller
 {
+    // ---------------- User verification ----------------
+
     public function verify(Request $request, $id, $hash)
     {
         // Signed URL middleware will have already validated signature and expiry
@@ -38,6 +41,46 @@ class EmailVerificationController extends Controller
         return response()->json([
             'status' => 'success',
             'message' => 'Email verified successfully. You may now log in.'
+        ], 200);
+    }
+
+    // ---------------- Resend User verification ----------------
+
+    public function resend(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email'
+        ]);
+
+        $user = User::where('email', $request->email)->first();
+
+        if (!$user) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'User not found.'
+            ], 404);
+        }
+
+        if ($user->hasVerifiedEmail()) {
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Email already verified.'
+            ], 200);
+        }
+
+        try {
+            $user->sendEmailVerificationNotification();
+        } catch (Exception $e) {
+            Log::error('Verification resend failed: ' . $e->getMessage());
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to send verification email.'
+            ], 500);
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Verification email sent.'
         ], 200);
     }
 
@@ -78,13 +121,15 @@ class EmailVerificationController extends Controller
         ], 200);
     }
 
+    // ---------------- Resend Vendor verification ----------------
+
     public function resendVendor(Request $request)
     {
         $request->validate([
             'email' => 'required|email'
         ]);
 
-        $vendor = \App\Models\Vendor::where('email', $request->email)->first();
+        $vendor = Vendor::where('email', $request->email)->first();
 
         if (!$vendor) {
             return response()->json([
@@ -102,7 +147,7 @@ class EmailVerificationController extends Controller
 
         try {
             $vendor->sendEmailVerificationNotification();
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::error('Vendor verification resend failed: ' . $e->getMessage());
             return response()->json([
                 'status' => 'error',
@@ -116,41 +161,4 @@ class EmailVerificationController extends Controller
         ], 200);
     }
 
-    public function resend(Request $request)
-    {
-        $request->validate([
-            'email' => 'required|email'
-        ]);
-
-        $user = User::where('email', $request->email)->first();
-
-        if (!$user) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'User not found.'
-            ], 404);
-        }
-
-        if ($user->hasVerifiedEmail()) {
-            return response()->json([
-                'status' => 'success',
-                'message' => 'Email already verified.'
-            ], 200);
-        }
-
-        try {
-            $user->sendEmailVerificationNotification();
-        } catch (\Exception $e) {
-            Log::error('Verification resend failed: ' . $e->getMessage());
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Failed to send verification email.'
-            ], 500);
-        }
-
-        return response()->json([
-            'status' => 'success',
-            'message' => 'Verification email sent.'
-        ], 200);
-    }
 }

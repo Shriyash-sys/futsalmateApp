@@ -15,6 +15,7 @@ class VendorSignupTest extends TestCase
 
     public function test_vendor_signup_creates_vendor_and_sends_verification()
     {
+        $this->withoutExceptionHandling();
         Notification::fake();
 
         $payload = [
@@ -22,7 +23,10 @@ class VendorSignupTest extends TestCase
             'email' => 'vendor@example.test',
             'password' => 'password123',
             'password_confirmation' => 'password123',
-            'phone' => '1234567890'
+            'phone' => '1234567890',
+            'address' => '123 Example St',
+            'owner_name' => 'Test Owner',
+            'terms' => true
         ];
 
         $response = $this->postJson('/api/vendor/signup', $payload);

@@ -126,26 +126,4 @@ class SignupControllerAPI extends Controller
     }
 
     // (Note: only one vendorSignup implementation — vendors are separate entities and not represented in `users`)
-
-
-    // ----------------------------------------Mail Verification Notice----------------------------------------
-
-    // public function mailVerificationNotice()
-    // {
-    //     return view('mail.userVerification');
-    // }
-
-    // // ----------------------------------------Resend Emaill  ----------------------------------------
-
-
-    // public function resendVerificationEmail(Request $request)
-    // {
-    //     if ($request->user()->hasVerifiedEmail()) {
-    //         return redirect()->route('dashboard');
-    //     }
-
-    //     $request->user()->sendEmailVerificationNotification();
-
-    //     return back()->with('message', 'Verification link sent!');
-    // }
 }
