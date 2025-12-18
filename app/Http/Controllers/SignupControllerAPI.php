@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Exception;
 use App\Models\User;
+use App\Models\Vendor;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
@@ -35,11 +36,20 @@ class SignupControllerAPI extends Controller
                 'phone' => $validatedData['phone'] ?? null,
             ]);
 
-            Auth::login($user);
+            // Do not log the user in until email is verified. Send verification email.
+            try {
+                $user->sendEmailVerificationNotification();
+            } catch (Exception $e) {
+                Log::error('Verification email failed to send: ' . $e->getMessage());
+                return response()->json([
+                    'status' => 'warning',
+                    'message' => 'Registered, but verification email failed. Please try again later.'
+                ], 200);
+            }
 
             return response()->json([
                 'status' => 'success',
-                'message' => 'Registration successful!',
+                'message' => 'Registration successful! A verification email has been sent. Please verify your email before logging in.',
                 'user' => $user
             ], 201);
         } catch (ValidationException $e) {
@@ -65,6 +75,58 @@ class SignupControllerAPI extends Controller
             ], 500);
         }
     }
+
+    // ----------------------------------------Vendor Signup----------------------------------------
+
+    public function vendorSignup(Request $request)
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|max:255|unique:vendors,email',
+            'password' => 'required|string|min:8|confirmed',
+            'phone' => 'nullable|string|max:15|unique:vendors,phone',
+            'address' => 'required|string|max:500',
+            'owner_name' => 'required|string|max:255',
+            'terms' => 'accepted'
+        ]);
+
+        try {
+            // create vendor
+            $vendor = Vendor::create([
+                'name' => $validated['name'],
+                'email' => $validated['email'],
+                'password' => Hash::make($validated['password']),
+                'phone' => $validated['phone'] ?? null,
+                'address' => $validated['address'],
+                'owner_name' => $validated['owner_name']
+            ]);
+
+            try {
+                $vendor->sendEmailVerificationNotification();
+            } catch (Exception $e) {
+                Log::error('Verification email failed to send to vendor: ' . $e->getMessage());
+                return response()->json([
+                    'status' => 'warning',
+                    'message' => 'Registered, but verification email failed. Please try again later.'
+                ], 200);
+            }
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Vendor registered successfully. A verification email has been sent.',
+                'vendor' => $vendor
+            ], 201);
+        } catch (Exception $e) {
+            Log::error('Vendor signup failed: ' . $e->getMessage());
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Vendor registration failed. Please try again.'
+            ], 500);
+        }
+    }
+
+    // (Note: only one vendorSignup implementation — vendors are separate entities and not represented in `users`)
+
 
     // ----------------------------------------Mail Verification Notice----------------------------------------
 

@@ -34,6 +34,17 @@ class LoginControllerAPI extends Controller
 
         Log::info('Login successful for user ID: ' . $user->id);
         
+        // Ensure email verified before allowing login
+        if (!$user->hasVerifiedEmail()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Please verify your email address before logging in.',
+                'actions' => [
+                    'resend_verification' => route('verification.resend')
+                ]
+            ], 403);
+        }
+
         $token = $user->createToken('auth-token')->plainTextToken;
 
         return response()->json([
