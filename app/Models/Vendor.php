@@ -20,7 +20,9 @@ class Vendor extends Authenticatable implements MustVerifyEmail
         'password',
         'phone',
         'address',
-        'owner_name'
+        'owner_name',
+        'email_otp',
+        'email_otp_expires_at'
     ];
 
     protected $hidden = [
@@ -30,6 +32,7 @@ class Vendor extends Authenticatable implements MustVerifyEmail
 
     protected $casts = [
         'email_verified_at' => 'datetime',
+        'email_otp_expires_at' => 'datetime'
     ];
 
     /**
@@ -37,7 +40,38 @@ class Vendor extends Authenticatable implements MustVerifyEmail
      */
     public function sendEmailVerificationNotification()
     {
-        $this->notify(new \App\Notifications\VendorVerifyEmail());
+        // kept for compatibility but now sends OTP via VendorEmailOtp
+        $otp = random_int(100000, 999999);
+        $expires = now()->addMinutes(config('auth.otp_expire', 10));
+        $this->email_otp = (string) $otp;
+        $this->email_otp_expires_at = $expires;
+        $this->save();
+        $this->notify(new \App\Notifications\VendorEmailOtp($otp, config('auth.otp_expire', 10)));
+    }
+
+    /**
+     * Verify given OTP and mark vendor as verified.
+     */
+    public function verifyEmailOtp(string $otp): bool
+    {
+        if (!$this->email_otp || !$this->email_otp_expires_at) {
+            return false;
+        }
+
+        if ($this->email_otp !== $otp) {
+            return false;
+        }
+
+        if ($this->email_otp_expires_at->isPast()) {
+            return false;
+        }
+
+        $this->email_verified_at = now();
+        $this->email_otp = null;
+        $this->email_otp_expires_at = null;
+        $this->save();
+
+        return true;
     }
 
     public function users()

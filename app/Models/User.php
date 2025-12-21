@@ -25,7 +25,10 @@ class User extends Authenticatable implements MustVerifyEmail
         'phone',
         'terms',
         'profile_photo',
-        'remember'
+        'remember',
+        'user_type',
+        'email_otp',
+        'email_otp_expires_at'
     ];
 
     /**
@@ -63,6 +66,46 @@ class User extends Authenticatable implements MustVerifyEmail
             'password' => 'hashed',
             'terms' => 'boolean',
             'remember' => 'boolean',
+            'email_otp_expires_at' => 'datetime'
         ];
     }
+
+    /**
+     * Verify the given OTP and mark email verified if valid.
+     */
+    public function verifyEmailOtp(string $otp): bool
+    {
+        if (!$this->email_otp || !$this->email_otp_expires_at) {
+            return false;
+        }
+
+        if ($this->email_otp !== $otp) {
+            return false;
+        }
+
+        if ($this->email_otp_expires_at->isPast()) {
+            return false;
+        }
+
+        $this->email_verified_at = now();
+        $this->email_otp = null;
+        $this->email_otp_expires_at = null;
+        $this->save();
+
+        return true;
+    }
+
+    /**
+     * Override to send OTP instead of URL verification
+     */
+    public function sendEmailVerificationNotification()
+    {
+        $otp = random_int(100000, 999999);
+        $expires = now()->addMinutes(config('auth.otp_expire', 10));
+        $this->email_otp = (string) $otp;
+        $this->email_otp_expires_at = $expires;
+        $this->save();
+        $this->notify(new \App\Notifications\UserEmailOtp($otp, config('auth.otp_expire', 10)));
+    }
 }
+

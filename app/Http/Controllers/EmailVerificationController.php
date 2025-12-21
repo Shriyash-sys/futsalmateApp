@@ -13,35 +13,12 @@ class EmailVerificationController extends Controller
 {
     // ---------------- User verification ----------------
 
-    public function verify(Request $request, $id, $hash)
+    public function verify(Request $request, $id = null, $hash = null)
     {
-        // Signed URL middleware will have already validated signature and expiry
-        // Additional check: ensure hash matches the user's email
-        $user = User::findOrFail($id);
-
-        if (!hash_equals((string) $hash, sha1($user->email))) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Invalid verification link.'
-            ], 403);
-        }
-
-        if ($user->hasVerifiedEmail()) {
-            return response()->json([
-                'status' => 'success',
-                'message' => 'Email already verified.'
-            ], 200);
-        }
-
-        $user->email_verified_at = now();
-        $user->save();
-
-        event(new Verified($user));
-
         return response()->json([
-            'status' => 'success',
-            'message' => 'Email verified successfully. You may now log in.'
-        ], 200);
+            'status' => 'error',
+            'message' => 'URL-based verification has been removed. Use OTP endpoint: /api/email/verify/otp'
+        ], 410);
     }
 
     // ---------------- Resend User verification ----------------
@@ -74,51 +51,61 @@ class EmailVerificationController extends Controller
             Log::error('Verification resend failed: ' . $e->getMessage());
             return response()->json([
                 'status' => 'error',
-                'message' => 'Failed to send verification email.'
+                'message' => 'Failed to send verification code.'
             ], 500);
         }
 
         return response()->json([
             'status' => 'success',
-            'message' => 'Verification email sent.'
+            'message' => 'Verification code sent.'
         ], 200);
     }
 
-    // ---------------- Vendor verification ----------------
-    public function verifyVendor(Request $request, $id, $hash)
+    // ---------------- User OTP verification ----------------
+    public function verifyOtp(Request $request)
     {
-        $vendor = Vendor::findOrFail($id);
+        $request->validate([
+            'email' => 'required|email',
+            'otp' => 'required|string'
+        ]);
 
-        if (!hash_equals((string) $hash, sha1($vendor->email))) {
+        $user = User::where('email', $request->email)->first();
+
+        if (!$user) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Invalid verification link.'
-            ], 403);
+                'message' => 'User not found.'
+            ], 404);
         }
 
-        if ($vendor->email_verified_at) {
+        if ($user->hasVerifiedEmail()) {
             return response()->json([
                 'status' => 'success',
-                'message' => 'Vendor email already verified.'
+                'message' => 'Email already verified.'
             ], 200);
         }
 
-        $vendor->email_verified_at = now();
-        $vendor->save();
-
-        event(new Verified($vendor));
-
-        // If an associated user exists, mark it verified too so vendor can log in
-        $user = User::where('vendor_id', $vendor->id)->first();
-        if ($user && !$user->hasVerifiedEmail()) {
-            $user->email_verified_at = now();
-            $user->save();
+        if ($user->verifyEmailOtp($request->otp)) {
+            event(new Verified($user));
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Email verified successfully. You may now log in.'
+            ], 200);
         }
 
         return response()->json([
-            'status' => 'success',
-            'message' => 'Vendor email verified successfully.'
-        ], 200);
+            'status' => 'error',
+            'message' => 'Invalid or expired OTP.'
+        ], 403);
+    }
+
+    // ---------------- Vendor verification ----------------
+    public function verifyVendor(Request $request, $id = null, $hash = null)
+    {
+        return response()->json([
+            'status' => 'error',
+            'message' => 'URL-based vendor verification has been removed. Use OTP endpoint: /api/vendor/email/verify/otp'
+        ], 410);
     }
 
     // ---------------- Resend Vendor verification ----------------
@@ -151,14 +138,66 @@ class EmailVerificationController extends Controller
             Log::error('Vendor verification resend failed: ' . $e->getMessage());
             return response()->json([
                 'status' => 'error',
-                'message' => 'Failed to send verification email.'
+                'message' => 'Failed to send verification code.'
             ], 500);
         }
 
         return response()->json([
             'status' => 'success',
-            'message' => 'Verification email sent.'
+            'message' => 'Verification code sent.'
         ], 200);
+    }
+
+    // ---------------- Vendor OTP verification ----------------
+    public function verifyVendorOtp(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email',
+            'otp' => 'required|string'
+        ]);
+
+        $vendor = Vendor::where('email', $request->email)->first();
+
+        if (!$vendor) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Vendor not found.'
+            ], 404);
+        }
+
+        if ($vendor->email_verified_at) {
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Vendor email already verified.'
+            ], 200);
+        }
+
+        if ($vendor->verifyEmailOtp($request->otp)) {
+            event(new Verified($vendor));
+
+            // If an associated user exists (via users.vendor_id), mark it verified too so vendor can log in
+            try {
+                if (\Illuminate\Support\Facades\Schema::hasColumn('users', 'vendor_id')) {
+                    $user = \App\Models\User::where('vendor_id', $vendor->id)->first();
+                    if ($user && !$user->hasVerifiedEmail()) {
+                        $user->email_verified_at = now();
+                        $user->save();
+                    }
+                }
+            } catch (\Exception $e) {
+                // If checking schema fails for any reason, skip the associated user update
+            }
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Vendor email verified successfully.'
+            ], 200);
+        }
+
+        return response()->json([
+            'status' => 'error',
+            'message' => 'Invalid or expired OTP.'
+        ], 403);
     }
 
 }

@@ -7,7 +7,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
 use App\Models\Vendor;
 use App\Models\User;
-use App\Notifications\VendorVerifyEmail;
+use App\Notifications\VendorEmailOtp;
 
 class VendorSignupTest extends TestCase
 {
@@ -35,7 +35,11 @@ class VendorSignupTest extends TestCase
         $this->assertDatabaseHas('vendors', ['email' => 'vendor@example.test']);
 
         $vendor = Vendor::where('email', 'vendor@example.test')->first();
-        Notification::assertSentTo($vendor, VendorVerifyEmail::class);
+        Notification::assertSentTo($vendor, VendorEmailOtp::class);
+
+        // OTP saved and expiry set
+        $this->assertNotNull($vendor->email_otp);
+        $this->assertNotNull($vendor->email_otp_expires_at);
     }
 
     public function test_vendor_cannot_login_before_verification()
@@ -62,5 +66,43 @@ class VendorSignupTest extends TestCase
 
         $response->assertStatus(200);
         $response->assertJsonStructure(['status','message','vendor','token']);
+    }
+
+    public function test_vendor_can_verify_using_otp_and_then_login()
+    {
+        Notification::fake();
+
+        $payload = [
+            'name' => 'OTP Vendor',
+            'email' => 'otp-vendor@example.test',
+            'password' => 'password123',
+            'password_confirmation' => 'password123',
+            'phone' => '1234567890',
+            'address' => '123 Example St',
+            'owner_name' => 'OTP Owner',
+            'terms' => true
+        ];
+
+        $this->postJson('/api/vendor/signup', $payload)->assertStatus(201);
+
+        $vendor = Vendor::where('email', 'otp-vendor@example.test')->first();
+        $this->assertNotNull($vendor->email_otp);
+
+        // Verify using OTP
+        $response = $this->postJson('/api/vendor/email/verify/otp', [
+            'email' => $vendor->email,
+            'otp' => $vendor->email_otp
+        ]);
+
+        $response->assertStatus(200);
+
+        // Now try to login
+        $login = $this->postJson('/api/vendor/login', [
+            'email' => $vendor->email,
+            'password' => 'password123'
+        ]);
+
+        $login->assertStatus(200);
+        $login->assertJsonStructure(['status','message','vendor','token']);
     }
 }

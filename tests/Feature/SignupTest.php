@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 use App\Models\User;
+use Illuminate\Support\Facades\Notification;
 
 class SignupTest extends TestCase
 {
@@ -25,6 +26,26 @@ class SignupTest extends TestCase
             'email' => 'user@example.com',
             'user_type' => 'user',
         ]);
+    }
+
+    public function test_user_signup_sends_otp()
+    {
+        Notification::fake();
+
+        $response = $this->postJson('/api/signup', [
+            'full_name' => 'Test User',
+            'email' => 'user-otp@example.com',
+            'password' => 'password123',
+            'password_confirmation' => 'password123',
+            'terms' => true,
+        ]);
+
+        $response->assertStatus(201);
+
+        $user = User::where('email', 'user-otp@example.com')->first();
+        Notification::assertSentTo($user, \App\Notifications\UserEmailOtp::class);
+        $this->assertNotNull($user->email_otp);
+        $this->assertNotNull($user->email_otp_expires_at);
     }
 
     public function test_vendor_signup_sets_user_type_vendor()

@@ -112,4 +112,14 @@ return [
 
     'password_timeout' => env('AUTH_PASSWORD_TIMEOUT', 10800),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Email OTP expiry
+    |--------------------------------------------------------------------------
+    |
+    | Number of minutes an email OTP remains valid. Default: 10 minutes.
+    |
+    */
+    'otp_expire' => env('OTP_EXPIRE_MINUTES', 10),
+
 ];

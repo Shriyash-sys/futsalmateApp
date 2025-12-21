@@ -25,16 +25,21 @@ class SignupControllerAPI extends Controller
             'email' => 'required|string|max:255|unique:users,email',
             'password' => 'required|string|min:8|confirmed',
             'phone' => 'nullable|string|max:15|unique:users,phone',
-            'terms' => 'accepted'
+            'terms' => 'accepted',
+            'type' => 'nullable|in:user,vendor'
         ]);
 
         try {
+            Log::info('Signup: type input = ' . $request->input('type'));
             $user = User::create([
                 'full_name' => $validatedData['full_name'],
                 'email' => $validatedData['email'],
                 'password' => Hash::make($validatedData['password']),
                 'phone' => $validatedData['phone'] ?? null,
+                'user_type' => $request->input('type', 'user'),
             ]);
+            Log::info('Signup: created user_type = ' . ($user->user_type ?? 'none'));
+
 
             // Do not log the user in until email is verified. Send verification email.
             try {
@@ -49,7 +54,7 @@ class SignupControllerAPI extends Controller
 
             return response()->json([
                 'status' => 'success',
-                'message' => 'Registration successful! A verification email has been sent. Please verify your email before logging in.',
+                'message' => 'Registration successful! A verification code (OTP) has been sent to your email. Please verify your email before logging in.',
                 'user' => $user
             ], 201);
         } catch (ValidationException $e) {
@@ -113,7 +118,7 @@ class SignupControllerAPI extends Controller
 
             return response()->json([
                 'status' => 'success',
-                'message' => 'Vendor registered successfully. A verification email has been sent.',
+                'message' => 'Vendor registered successfully. A verification code (OTP) has been sent to your email.',
                 'vendor' => $vendor
             ], 201);
         } catch (Exception $e) {
