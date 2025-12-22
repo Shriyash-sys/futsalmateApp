@@ -105,4 +105,70 @@ class VendorSignupTest extends TestCase
         $login->assertStatus(200);
         $login->assertJsonStructure(['status','message','vendor','token']);
     }
+
+    public function test_vendor_resend_otp_returns_already_valid_if_not_forced()
+    {
+        Notification::fake();
+
+        $vendor = Vendor::factory()->create([
+            'email_otp' => '654321',
+            'email_otp_expires_at' => now()->addMinutes(10),
+            'email_verified_at' => null
+        ]);
+
+        $response = $this->postJson('/api/vendor/email/verify/resend-otp', [
+            'email' => $vendor->email
+        ]);
+
+        $response->assertStatus(200);
+        $response->assertJsonFragment(['message' => 'OTP already sent and still valid.']);
+        Notification::assertNothingSent();
+    }
+
+    public function test_vendor_resend_otp_with_force_sends_new_otp()
+    {
+        Notification::fake();
+
+        $vendor = Vendor::factory()->create([
+            'email_otp' => '654321',
+            'email_otp_expires_at' => now()->addMinutes(10),
+            'email_verified_at' => null
+        ]);
+
+        $old = $vendor->email_otp;
+
+        $response = $this->postJson('/api/vendor/email/verify/resend-otp', [
+            'email' => $vendor->email,
+            'force' => true
+        ]);
+
+        $response->assertStatus(200);
+        $response->assertJsonFragment(['message' => 'Verification code sent.']);
+        Notification::assertSentTo($vendor, VendorEmailOtp::class);
+
+        $vendor->refresh();
+        $this->assertNotEquals($old, $vendor->email_otp);
+        $this->assertTrue($vendor->email_otp_expires_at->isFuture());
+    }
+
+    public function test_vendor_resend_otp_throttles_after_limit()
+    {
+        Notification::fake();
+
+        $vendor = Vendor::factory()->create();
+
+        $limit = config('auth.otp_resend_limit', 5);
+
+        for ($i = 0; $i < $limit; $i++) {
+            $this->postJson('/api/vendor/email/verify/resend-otp', [
+                'email' => $vendor->email,
+                'force' => true
+            ])->assertStatus(200);
+        }
+
+        $this->postJson('/api/vendor/email/verify/resend-otp', [
+            'email' => $vendor->email,
+            'force' => true
+        ])->assertStatus(429);
+    }
 }

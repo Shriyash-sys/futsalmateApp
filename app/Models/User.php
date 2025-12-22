@@ -28,7 +28,9 @@ class User extends Authenticatable implements MustVerifyEmail
         'remember',
         'user_type',
         'email_otp',
-        'email_otp_expires_at'
+        'email_otp_expires_at',
+        'otp_resend_count',
+        'otp_resend_expires_at'
     ];
 
     /**
@@ -66,7 +68,8 @@ class User extends Authenticatable implements MustVerifyEmail
             'password' => 'hashed',
             'terms' => 'boolean',
             'remember' => 'boolean',
-            'email_otp_expires_at' => 'datetime'
+            'email_otp_expires_at' => 'datetime',
+            'otp_resend_expires_at' => 'datetime'
         ];
     }
 

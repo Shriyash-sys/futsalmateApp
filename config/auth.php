@@ -122,4 +122,16 @@ return [
     */
     'otp_expire' => env('OTP_EXPIRE_MINUTES', 10),
 
+    /*
+    |--------------------------------------------------------------------------
+    | OTP resend throttling
+    |--------------------------------------------------------------------------
+    |
+    | Limit specifies how many OTP resends are allowed within `otp_resend_interval` minutes.
+    | Interval is specified in minutes.
+    |
+    */
+    'otp_resend_limit' => env('OTP_RESEND_LIMIT', 5),
+    'otp_resend_interval' => env('OTP_RESEND_INTERVAL_MINUTES', 60),
+
 ];

@@ -1,0 +1,167 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\User;
+use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\Storage;
+
+class UserProfileControllerAPI extends Controller
+{
+    // ----------------------------------------Show Profile----------------------------------------
+    public function show(Request $request)
+    {
+        $user = $request->user();
+
+        if (!$user) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Unauthenticated.'
+            ], 401);
+        }
+
+        $profile = null;
+        if (method_exists($user, 'profile')) {
+            $profile = $user->profile;
+        }
+
+        if ($profile) {
+            return response()->json([
+                'status' => 'success',
+                'profile' => $profile
+            ], 200);
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'user' => $user
+        ], 200);
+    }
+
+    // ----------------------------------------Edit Profile----------------------------------------
+    public function editProfile(Request $request)
+    {
+        $user = $request->user();
+
+        if (!$user || !($user instanceof User)) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'User not authenticated or invalid model.'
+            ], 403);
+        }
+
+        $validated = $request->validate([
+            'full_name' => 'nullable|string|max:255',
+            'email' => [
+                'required',
+                'email',
+                Rule::unique('users', 'email')->ignore($user->id),
+            ],
+            'phone' => 'nullable|string|max:15',
+        ]);
+
+        // Only update fields that are present
+        if (array_key_exists('full_name', $validated)) {
+            $user->full_name = $validated['full_name'];
+        }
+
+        if (array_key_exists('email', $validated)) {
+            $user->email = $validated['email'];
+        }
+
+        if (array_key_exists('phone', $validated)) {
+            $user->phone = $validated['phone'];
+        }
+
+        $user->save();
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Profile updated successfully',
+            'user' => $user
+        ], 200);
+    }
+
+    // ----------------------------------------Add Profile Photo----------------------------------------
+    public function addProfilePhoto(Request $request)
+    {
+        $validated = $request->validate([
+            'profile_photo' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048',
+        ]);
+
+        $user = $request->user();
+        if (!$user || !($user instanceof User)) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Unauthenticated.'
+            ], 401);
+        }
+
+        if ($request->hasFile('profile_photo')) {
+            $file = $request->file('profile_photo');
+            if (!$file || !$file->isValid()) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Uploaded file is invalid.'
+                ], 422);
+            }
+
+            // Delete old photo if exists
+            if ($user->profile_photo_path) {
+                Storage::disk('public')->delete($user->profile_photo_path);
+            }
+
+            // Store new photo (public disk)
+            $path = $file->storePublicly('profile_photos', 'public');
+            $user->profile_photo_path = $path;
+
+            // Get URL for the stored photo
+            $url = asset('storage/' . $path);
+
+            $user->profile_photo_url = $url;
+            $user->save();
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Profile photo updated.',
+                'profile_photo_path' => $path,
+                'profile_photo_url' => $user->profile_photo_url
+            ], 200);
+        }
+
+        return response()->json([
+            'status' => 'error',
+            'message' => 'No photo uploaded.'
+        ], 422);
+    }
+
+    // ----------------------------------------Delete Profile Photo----------------------------------------
+    public function deleteProfilePhoto(Request $request)
+    {
+        $user = $request->user();
+        if (!$user || !($user instanceof User)) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Unauthenticated.'
+            ], 401);
+        }
+
+        if ($user->profile_photo_path) {
+            Storage::disk('public')->delete($user->profile_photo_path);
+            $user->profile_photo_path = null;
+            $user->profile_photo_url = null;
+            $user->save();
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Profile photo removed.'
+            ], 200);
+        }
+
+        return response()->json([
+            'status' => 'error',
+            'message' => 'No profile photo found.'
+        ], 404);
+    }
+}

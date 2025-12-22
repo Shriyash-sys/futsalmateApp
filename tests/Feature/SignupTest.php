@@ -6,6 +6,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 use App\Models\User;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Hash;
 
 class SignupTest extends TestCase
 {
@@ -64,5 +65,77 @@ class SignupTest extends TestCase
             'email' => 'vendor@example.com',
             'user_type' => 'vendor',
         ]);
+    }
+
+    public function test_resend_otp_returns_already_valid_if_not_forced()
+    {
+        Notification::fake();
+
+        $user = User::create([
+            'full_name' => 'Test User',
+            'email' => 'resend-user@example.test',
+            'password' => Hash::make('password123'),
+            'terms' => true,
+            'email_otp' => '123456',
+            'email_otp_expires_at' => now()->addMinutes(10)
+        ]);
+
+        $response = $this->postJson('/api/email/verify/resend-otp', [
+            'email' => $user->email
+        ]);
+
+        $response->assertStatus(200);
+        $response->assertJsonFragment(['message' => 'OTP already sent and still valid.']);
+        Notification::assertNothingSent();
+    }
+
+    public function test_resend_otp_with_force_sends_new_otp()
+    {
+        Notification::fake();
+
+        $user = User::create([
+            'full_name' => 'Test User',
+            'email' => 'resend-force@example.test',
+            'password' => Hash::make('password123'),
+            'terms' => true,
+            'email_otp' => '123456',
+            'email_otp_expires_at' => now()->addMinutes(10)
+        ]);
+
+        $oldOtp = $user->email_otp;
+
+        $response = $this->postJson('/api/email/verify/resend-otp', [
+            'email' => $user->email,
+            'force' => true
+        ]);
+
+        $response->assertStatus(200);
+        $response->assertJsonFragment(['message' => 'Verification code sent.']);
+        Notification::assertSentTo($user, \App\Notifications\UserEmailOtp::class);
+
+        $user->refresh();
+        $this->assertNotEquals($oldOtp, $user->email_otp);
+        $this->assertTrue($user->email_otp_expires_at->isFuture());
+    }
+
+    public function test_resend_otp_throttles_after_limit()
+    {
+        Notification::fake();
+
+        $user = User::factory()->create();
+
+        $limit = config('auth.otp_resend_limit', 5);
+
+        for ($i = 0; $i < $limit; $i++) {
+            $this->postJson('/api/email/verify/resend-otp', [
+                'email' => $user->email,
+                'force' => true
+            ])->assertStatus(200);
+        }
+
+        $this->postJson('/api/email/verify/resend-otp', [
+            'email' => $user->email,
+            'force' => true
+        ])->assertStatus(429);
     }
 }

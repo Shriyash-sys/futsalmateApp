@@ -7,6 +7,8 @@ use App\Models\Vendor;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Auth;
+use Laravel\Sanctum\PersonalAccessToken;
 
 class LoginControllerAPI extends Controller
 {
@@ -43,7 +45,7 @@ class LoginControllerAPI extends Controller
                 'status' => 'error',
                 'message' => 'Please verify your email address before logging in.',
                 'actions' => [
-                    'resend_verification' => route('verification.resend')
+                    'resend_verification' => route('verification.resend.otp')
                 ]
             ], 403);
         }
@@ -59,41 +61,29 @@ class LoginControllerAPI extends Controller
         ], 200);
     }
 
-    // ---------------- Vendor Login ----------------
-
-    public function vendorLogin(Request $request)
+    // ---------------- User Logout ----------------
+    public function logout(Request $request)
     {
-        $validated = $request->validate([
-            'email' => 'required|email',
-            'password' => 'required|string|min:8'
-        ]);
+        $user = $request->user();
 
-        $vendor = Vendor::where('email', $validated['email'])->first();
-
-        if (!$vendor || !Hash::check($validated['password'], $vendor->password)) {
+        if (!$user) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'The provided credentials do not match our records.'
+                'message' => 'Unauthenticated.'
             ], 401);
         }
 
-        if (!$vendor->email_verified_at) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Please verify your vendor email before logging in.',
-                'actions' => [
-                    'resend_verification' => route('vendor.verification.resend')
-                ]
-            ], 403);
+        // Attempt to revoke by current access token
+        if ($user->currentAccessToken()) {
+            $user->currentAccessToken()->delete();
         }
-
-        $token = $vendor->createToken('vendor-token')->plainTextToken;
+            
+        // As a fallback remove all tokens for this user
+        // $user->tokens()->delete();
 
         return response()->json([
             'status' => 'success',
-            'message' => 'Login successful',
-            'vendor' => $vendor,
-            'token' => $token
+            'message' => 'Logged out successfully.'
         ], 200);
     }
 }

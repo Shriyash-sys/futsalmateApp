@@ -22,7 +22,9 @@ class Vendor extends Authenticatable implements MustVerifyEmail
         'address',
         'owner_name',
         'email_otp',
-        'email_otp_expires_at'
+        'email_otp_expires_at',
+        'otp_resend_count',
+        'otp_resend_expires_at'
     ];
 
     protected $hidden = [
@@ -32,7 +34,8 @@ class Vendor extends Authenticatable implements MustVerifyEmail
 
     protected $casts = [
         'email_verified_at' => 'datetime',
-        'email_otp_expires_at' => 'datetime'
+        'email_otp_expires_at' => 'datetime',
+        'otp_resend_expires_at' => 'datetime'
     ];
 
     /**
