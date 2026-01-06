@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Book;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -9,6 +10,48 @@ use Illuminate\Support\Facades\Storage;
 
 class UserProfileControllerAPI extends Controller
 {
+    // ----------------------------------------User Dashboard----------------------------------------
+    public function userDashboard(Request $request)
+    {
+        $user = $request->user();
+        if(!$user) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Unauthenticated.'
+            ], 401);
+        }
+
+        $totalBookings = Book::where('user_id', $user->id)->count();
+
+        $today = now()->format('Y-m-d');
+        $currentTime = now()->format('H:i:s');
+
+        $upcomingBookings = Book::where('user_id', $user->id)
+            ->with('court')
+            ->where(function($query) use ($today, $currentTime) {
+                // Bookings in the future (date > today)
+                $query->where('date', '>', $today)
+                    // OR bookings today with start_time >= current time
+                    ->orWhere(function($q) use ($today, $currentTime) {
+                        $q->where('date', '=', $today)
+                          ->where('start_time', '>=', $currentTime);
+                    });
+            })
+            ->whereNotIn('status', ['Cancelled', 'Rejected'])
+            ->orderBy('date', 'asc')
+            ->orderBy('start_time', 'asc')
+            ->get();
+
+        return response()->json([
+            'status' => 'success',
+            'data' => [
+                'user' => $user,
+                'total_bookings' => $totalBookings,
+                'upcoming_bookings' => $upcomingBookings,
+            ]
+        ], 200);
+    }
+
     // ----------------------------------------Show Profile----------------------------------------
     public function show(Request $request)
     {

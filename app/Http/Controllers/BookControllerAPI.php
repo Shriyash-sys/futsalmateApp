@@ -6,6 +6,7 @@ use App\Models\Book;
 use App\Models\Court;
 use Illuminate\Support\Str;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class BookControllerAPI extends Controller
 {
@@ -192,5 +193,192 @@ class BookControllerAPI extends Controller
             'message' => 'Booking not found or already processed.',
             'transaction_uuid' => $txn
         ], 404);
+    }
+
+    /**
+     * Edit a booking
+     */
+    public function editBooking(Request $request, $id)
+    {
+        $user = $request->user();
+        if (!$user) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Unauthenticated.'
+            ], 401);
+        }
+
+        $booking = Book::with('court')->find($id);
+        if (!$booking) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Booking not found.'
+            ], 404);
+        }
+
+        // Check if the booking belongs to the authenticated user
+        if ($booking->user_id !== $user->id) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Unauthorized. This booking does not belong to you.'
+            ], 403);
+        }
+
+        // Check if booking can be edited (e.g., not already confirmed or cancelled)
+        if (in_array($booking->status, ['Confirmed', 'Cancelled', 'Rejected'])) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Cannot edit booking with status: ' . $booking->status
+            ], 400);
+        }
+
+        $validated = $request->validate([
+            'date' => 'required|date|after_or_equal:today',
+            'start_time' => 'required|string|max:255',
+            'end_time' => 'required|string|max:255',
+        ]);
+
+        $booking->date = $validated['date'];
+        $booking->start_time = $validated['start_time'];
+        $booking->end_time = $validated['end_time'];
+        $booking->save();
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Booking updated successfully.',
+            'booking' => $booking->load('court')
+        ], 200);
+    }
+
+    /**
+     * Get booked times for a specific court and date
+     */
+    public function getBookedTimes(Request $request)
+    {
+        $validated = $request->validate([
+            'court_id' => 'required|exists:courts,id',
+            'date' => 'required|date',
+        ]);
+
+        $bookings = Book::where('court_id', $validated['court_id'])
+            ->where('date', $validated['date'])
+            ->where('status', '!=', 'Rejected')
+            ->where('status', '!=', 'Cancelled')
+            ->get(['start_time', 'end_time', 'status']);
+
+        return response()->json([
+            'status' => 'success',
+            'booked_times' => $bookings
+        ], 200);
+    }
+
+    /**
+     * Get booking confirmation details
+     */
+    public function showBookingConfirmation(Request $request, $id)
+    {
+        $user = $request->user();
+        if (!$user) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Unauthenticated.'
+            ], 401);
+        }
+
+        $booking = Book::with('court')->find($id);
+        if (!$booking) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Booking not found.'
+            ], 404);
+        }
+
+        // Check if the booking belongs to the authenticated user
+        if ($booking->user_id !== $user->id) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Unauthorized. This booking does not belong to you.'
+            ], 403);
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'booking' => $booking
+        ], 200);
+    }
+
+    /**
+     * Cancel a booking
+     */
+    public function cancelBooking(Request $request, $id)
+    {
+        $user = $request->user();
+        if (!$user) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Unauthenticated.'
+            ], 401);
+        }
+
+        $booking = Book::where('id', $id)->where('user_id', $user->id)->first();
+
+        if (!$booking) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Booking not found or not authorized.'
+            ], 404);
+        }
+
+        // Check if booking can be cancelled
+        if (in_array($booking->status, ['Cancelled', 'Rejected'])) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Booking is already cancelled or rejected.'
+            ], 400);
+        }
+
+        $booking->status = 'Cancelled';
+        $booking->save();
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Booking cancelled successfully.',
+            'booking' => $booking->load('court')
+        ], 200);
+    }
+
+    /**
+     * View booking details
+     */
+    public function viewBooking(Request $request, $id)
+    {
+        $user = $request->user();
+        if (!$user) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Unauthenticated.'
+            ], 401);
+        }
+
+        $booking = Book::with('court')->find($id);
+        if (!$booking) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Booking not found.'
+            ], 404);
+        }
+
+        // Check if the booking belongs to the authenticated user
+        if ($booking->user_id !== $user->id) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Unauthorized. This booking does not belong to you.'
+            ], 403);
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'booking' => $booking
+        ], 200);
     }
 }

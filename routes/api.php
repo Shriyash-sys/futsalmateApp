@@ -25,13 +25,8 @@ Route::post('/login', [LoginControllerAPI::class, 'login']);
 Route::post('/email/verify/otp', [EmailVerificationController::class, 'verifyOtp'])->name('verification.verify.otp');
 Route::post('/email/verify/resend-otp', [EmailVerificationController::class, 'resend'])->name('verification.resend.otp');
 
-// User profile
-Route::middleware('auth:sanctum')->get('/profile', [UserProfileControllerAPI::class, 'show']);
-Route::middleware('auth:sanctum')->match(['put','patch'],'/profile', [UserProfileControllerAPI::class, 'editProfile']);
-
-// Profile photo endpoints
-Route::middleware('auth:sanctum')->post('/profile/photo', [UserProfileControllerAPI::class, 'addProfilePhoto']);
-Route::middleware('auth:sanctum')->delete('/profile/photo', [UserProfileControllerAPI::class, 'deleteProfilePhoto']);
+// User dashboard
+Route::get('/user-dashboard', [UserProfileControllerAPI::class, 'userDashboard']);
 
 //Show available courts for booking
 Route::middleware('auth:sanctum')->get('/show-court', [CourtControllerAPI::class, 'showBookCourt']);
@@ -40,6 +35,23 @@ Route::middleware('auth:sanctum')->get('/show-court', [CourtControllerAPI::class
 Route::middleware('auth:sanctum')->post('/book', [BookControllerAPI::class, 'bookCourt']);
 Route::get('/book/esewa/success', [BookControllerAPI::class, 'success']);
 Route::get('/book/esewa/failure', [BookControllerAPI::class, 'failure']);
+
+// Edit/Cancel Booking endpoints
+Route::middleware('auth:sanctum')->match(['put','patch'], '/edit-booking/{id}', [BookControllerAPI::class, 'editBooking']);
+Route::middleware('auth:sanctum')->delete('/cancel-booking/{id}', [BookControllerAPI::class, 'cancelBooking']);
+
+// View Booking endpoints
+Route::get('/book/booked-times', [BookControllerAPI::class, 'getBookedTimes']);
+Route::get('/book/booking-confirmation/{id}', [BookControllerAPI::class, 'showBookingConfirmation']);
+Route::get('/book/user-bookings/{id}', [BookControllerAPI::class, 'viewBooking']);
+
+// User profile
+Route::middleware('auth:sanctum')->get('/profile', [UserProfileControllerAPI::class, 'show']);
+Route::middleware('auth:sanctum')->match(['put','patch'],'/profile', [UserProfileControllerAPI::class, 'editProfile']);
+
+// Profile photo endpoints
+Route::middleware('auth:sanctum')->post('/profile/photo', [UserProfileControllerAPI::class, 'addProfilePhoto']);
+Route::middleware('auth:sanctum')->delete('/profile/photo', [UserProfileControllerAPI::class, 'deleteProfilePhoto']);
 
 // Logout endpoints (require authentication)
 Route::middleware('auth:sanctum')->post('/logout', [LoginControllerAPI::class, 'logout']);

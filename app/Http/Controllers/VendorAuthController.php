@@ -10,11 +10,8 @@ use Illuminate\Support\Facades\Hash;
 
 class VendorAuthController extends Controller
 {
-    // ----------------------------------------Vendor Signup - DISABLED----------------------------------------
-    // Vendor signup is disabled. Vendors can only be created by admin through the admin panel.
-    // Use the Filament VendorResource to create vendor accounts.
+    // ----------------------------------------Vendor Signup----------------------------------------
 
-    /*
     public function vendorSignup(Request $request)
     {
         $validated = $request->validate([
@@ -60,7 +57,6 @@ class VendorAuthController extends Controller
             ], 500);
         }
     }
-    */
 
     // ---------------- Vendor Login ----------------
     public function vendorLogin(Request $request)
@@ -79,6 +75,16 @@ class VendorAuthController extends Controller
             ], 401);
         }
 
+        if (!$vendor->email_verified_at) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Please verify your vendor email before logging in.',
+                'actions' => [
+                    'resend_verification' => route('vendor.verification.resend.otp')
+                ]
+            ], 403);
+        }
+
         $token = $vendor->createToken('vendor-token')->plainTextToken;
 
         return response()->json([
@@ -89,7 +95,7 @@ class VendorAuthController extends Controller
         ], 200);
     }
 
-    // ---------------- Vendor Logout ----------------
+        // ---------------- Vendor Logout ----------------
     public function vendorLogout(Request $request)
     {
         $actor = $request->user();
