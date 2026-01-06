@@ -76,10 +76,6 @@ class VendorResource extends Resource
                     ->searchable()
                     ->sortable()
                     ->label('Owner'),
-                Tables\Columns\TextColumn::make('email_verified_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()
@@ -119,4 +115,5 @@ class VendorResource extends Resource
         ];
     }
 }
+
 

@@ -14,7 +14,6 @@ class VendorFactory extends Factory
         return [
             'name' => $this->faker->company,
             'email' => $this->faker->unique()->safeEmail,
-            'email_verified_at' => null,
             'password' => \Illuminate\Support\Facades\Hash::make('password123'),
             'phone' => $this->faker->phoneNumber,
             'address' => $this->faker->address,

@@ -79,16 +79,6 @@ class VendorAuthController extends Controller
             ], 401);
         }
 
-        if (!$vendor->email_verified_at) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Please verify your vendor email before logging in.',
-                'actions' => [
-                    'resend_verification' => route('vendor.verification.resend.otp')
-                ]
-            ], 403);
-        }
-
         $token = $vendor->createToken('vendor-token')->plainTextToken;
 
         return response()->json([
@@ -99,7 +89,7 @@ class VendorAuthController extends Controller
         ], 200);
     }
 
-        // ---------------- Vendor Logout ----------------
+    // ---------------- Vendor Logout ----------------
     public function vendorLogout(Request $request)
     {
         $actor = $request->user();
