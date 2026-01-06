@@ -30,6 +30,10 @@ class Vendor extends Authenticatable implements MustVerifyEmail
     protected $hidden = [
         'password',
         'remember_token',
+        'email_otp',
+        'email_otp_expires_at',
+        'otp_resend_count',
+        'otp_resend_expires_at',
     ];
 
     protected $casts = [
@@ -77,9 +81,9 @@ class Vendor extends Authenticatable implements MustVerifyEmail
         return true;
     }
 
-    public function users()
+    public function court()
     {
-        return $this->hasMany(User::class);
+        return $this->hasMany(Court::class);
     }
 
 }

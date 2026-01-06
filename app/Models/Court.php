@@ -13,12 +13,16 @@ class Court extends Model
         'image',
         'description',
         'status',
-        'vendor_id'
+        'vendor_id',
+        'latitude',
+        'longitude'
     ];
 
     protected $casts = [
         'availability' => 'array',
-        'image' => 'array',
+        'image' => 'string',
+        'latitude' => 'float',
+        'longitude' => 'float'
     ];
 
     public function vendor() {

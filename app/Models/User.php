@@ -54,24 +54,25 @@ class User extends Authenticatable implements MustVerifyEmail
     protected $hidden = [
         'password',
         'remember_token',
+        'email_otp',
+        'email_otp_expires_at',
+        'otp_resend_count',
+        'otp_resend_expires_at',
     ];
 
     /**
-     * Get the attributes that should be cast.
+     * The attributes that should be cast.
      *
-     * @return array<string, string>
+     * @var array<string, string>
      */
-    protected function casts(): array
-    {
-        return [
-            'email_verified_at' => 'datetime',
-            'password' => 'hashed',
-            'terms' => 'boolean',
-            'remember' => 'boolean',
-            'email_otp_expires_at' => 'datetime',
-            'otp_resend_expires_at' => 'datetime'
-        ];
-    }
+    protected $casts = [
+        'email_verified_at' => 'datetime',
+        'password' => 'hashed',
+        'terms' => 'boolean',
+        'remember' => 'boolean',
+        'email_otp_expires_at' => 'datetime',
+        'otp_resend_expires_at' => 'datetime'
+    ];
 
     /**
      * Verify the given OTP and mark email verified if valid.

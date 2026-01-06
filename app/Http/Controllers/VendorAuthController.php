@@ -10,8 +10,11 @@ use Illuminate\Support\Facades\Hash;
 
 class VendorAuthController extends Controller
 {
-    // ----------------------------------------Vendor Signup----------------------------------------
+    // ----------------------------------------Vendor Signup - DISABLED----------------------------------------
+    // Vendor signup is disabled. Vendors can only be created by admin through the admin panel.
+    // Use the Filament VendorResource to create vendor accounts.
 
+    /*
     public function vendorSignup(Request $request)
     {
         $validated = $request->validate([
@@ -57,6 +60,7 @@ class VendorAuthController extends Controller
             ], 500);
         }
     }
+    */
 
     // ---------------- Vendor Login ----------------
     public function vendorLogin(Request $request)

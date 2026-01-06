@@ -18,8 +18,6 @@ class SignupControllerAPI extends Controller
 
     public function signup(Request $request)
     {
-        // Move validation outside try-catch to allow Laravel's validation exception handler
-        // to return proper 422 responses with field-specific errors
         $validatedData = $request->validate([
             'full_name' => 'required|string|max:255',
             'email' => 'required|string|max:255|unique:users,email',
@@ -36,12 +34,11 @@ class SignupControllerAPI extends Controller
                 'email' => $validatedData['email'],
                 'password' => Hash::make($validatedData['password']),
                 'phone' => $validatedData['phone'] ?? null,
+                'terms' => isset($validatedData['terms']) ? true : false,
                 'user_type' => $request->input('type', 'user'),
             ]);
             Log::info('Signup: created user_type = ' . ($user->user_type ?? 'none'));
 
-
-            // Do not log the user in until email is verified. Send verification email.
             try {
                 $user->sendEmailVerificationNotification();
             } catch (Exception $e) {
@@ -51,6 +48,14 @@ class SignupControllerAPI extends Controller
                     'message' => 'Registered, but verification email failed. Please try again later.'
                 ], 200);
             }
+
+            // Ensure OTP-related fields are not returned in the API response
+            $user->makeHidden([
+                'email_otp',
+                'email_otp_expires_at',
+                'otp_resend_count',
+                'otp_resend_expires_at'
+            ]);
 
             return response()->json([
                 'status' => 'success',

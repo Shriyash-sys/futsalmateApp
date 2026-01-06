@@ -57,7 +57,6 @@ class LoginControllerAPI extends Controller
             'message' => 'Login successful!',
             'user' => $user,
             'token' => $token
-            // 'redirect' => route('userDashboard')
         ], 200);
     }
 
