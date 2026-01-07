@@ -2,20 +2,22 @@
 
 namespace App\Filament\Resources;
 
-use App\Filament\Resources\CourtResource\Pages;
 use App\Models\Court;
-use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteAction;
-use Filament\Actions\DeleteBulkAction;
-use Filament\Actions\EditAction;
-use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Textarea;
-use Filament\Forms\Components\FileUpload;
-use Filament\Resources\Resource;
-use Filament\Schemas\Schema;
-use Filament\Tables;
 use Filament\Tables\Table;
+use Filament\Schemas\Schema;
+use Filament\Actions\EditAction;
+use Filament\Resources\Resource;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\BulkActionGroup;
+use Filament\Forms\Components\Select;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Forms\Components\Textarea;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Forms\Components\TextInput;
+use Filament\Tables\Columns\ImageColumn;
+use Filament\Forms\Components\FileUpload;
+use Filament\Tables\Filters\SelectFilter;
+use App\Filament\Resources\CourtResource\Pages;
 
 class CourtResource extends Resource
 {
@@ -80,20 +82,20 @@ class CourtResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('court_name')
+                TextColumn::make('court_name')
                     ->searchable()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('location')
+                TextColumn::make('location')
                     ->searchable()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('price')
-                    ->money('USD')
+                TextColumn::make('price')
+                    ->money('NPR')
                     ->sortable(),
-                Tables\Columns\TextColumn::make('vendor.name')
+                TextColumn::make('vendor.name')
                     ->searchable()
                     ->sortable()
                     ->label('Vendor'),
-                Tables\Columns\TextColumn::make('status')
+                TextColumn::make('status')
                     ->badge()
                     ->color(fn (string $state): string => match ($state) {
                         'active' => 'success',
@@ -101,26 +103,26 @@ class CourtResource extends Resource
                         'maintenance' => 'warning',
                         default => 'gray',
                     }),
-                Tables\Columns\ImageColumn::make('image')
+                ImageColumn::make('image')
                     ->circular()
                     ->toggleable(),
-                Tables\Columns\TextColumn::make('created_at')
+                TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
-                Tables\Columns\TextColumn::make('updated_at')
+                TextColumn::make('updated_at')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                Tables\Filters\SelectFilter::make('status')
+                SelectFilter::make('status')
                     ->options([
                         'active' => 'Active',
                         'inactive' => 'Inactive',
                         'maintenance' => 'Maintenance',
                     ]),
-                Tables\Filters\SelectFilter::make('vendor_id')
+                SelectFilter::make('vendor_id')
                     ->label('Vendor')
                     ->relationship('vendor', 'name')
                     ->searchable()

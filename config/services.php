@@ -35,4 +35,15 @@ return [
         ],
     ],
 
+    'firebase' =>[
+        'credentials'=> base_path('storage/app/firebase/futsalmateapp-firebase-adminsdk-fbsvc-2ad0296d89.json'),
+    ],
+
+    'esewa' => [
+        'merchant_code' => env('ESEWA_MERCHANT_CODE', 'EPAYTEST'),
+        'secret_key' => env('ESEWA_SECRET_KEY', '8gBm/:&EnhH.1/q'),
+        'payment_url' => env('ESEWA_PAYMENT_URL', 'https://uat.esewa.com.np/epay/main'),
+        'environment' => env('ESEWA_ENVIRONMENT', 'test'),
+    ],
+
 ];

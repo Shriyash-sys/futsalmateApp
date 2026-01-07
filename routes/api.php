@@ -68,5 +68,9 @@ Route::middleware('auth:sanctum')->post('/vendor/add-courts', [CourtControllerAP
 // Logout endpoints (require authentication)
 Route::middleware('auth:sanctum')->post('/vendor/logout', [VendorAuthController::class, 'vendorLogout']);
 
+// Vendor booking approval endpoints
+Route::middleware('auth:sanctum')->post('/vendor/bookings/{id}/approve', [BookControllerAPI::class, 'vendorApproveBooking']);
+Route::middleware('auth:sanctum')->post('/vendor/bookings/{id}/reject', [BookControllerAPI::class, 'vendorRejectBooking']);
+
 
 

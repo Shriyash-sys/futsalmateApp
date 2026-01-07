@@ -52,8 +52,8 @@ class BookControllerAPI extends Controller
             'court_id' => $validated['court_id'],
             'user_id' => $user->id,
             'price' => $court->price,
-            'payment_status' => $validated['payment'] === 'eSewa' ? 'Paid' : 'Pending',
-            'status' => $validated['payment'] === 'Cash' ? 'Pending' : 'PendingPayment',
+            'payment_status' => 'Pending',
+            'status' => 'Pending',
         ]);
 
         if ($validated['payment'] === 'Cash') {
@@ -68,7 +68,7 @@ class BookControllerAPI extends Controller
         $amount = $booking->price;
         $tax_amount = 0;
         $total_amount = $amount + $tax_amount;
-        $product_code = 'EPAYTEST';
+        $product_code = config('services.esewa.merchant_code', 'EPAYTEST');
         $product_service_charge = 0;
         $product_delivery_charge = 0;
         $success_url = url('/api/book/esewa/success');
@@ -76,7 +76,7 @@ class BookControllerAPI extends Controller
         $signed_field_names = "total_amount,transaction_uuid,product_code";
 
         $message = "total_amount=$total_amount,transaction_uuid=$transaction_uuid,product_code=$product_code";
-        $secret_key = "8gBm/:&EnhH.1/q"; // Replace with your actual merchant key
+        $secret_key = config('services.esewa.secret_key');
         $signature = base64_encode(hash_hmac('sha256', $message, $secret_key, true));
 
         return response()->json([
@@ -84,6 +84,7 @@ class BookControllerAPI extends Controller
             'message' => 'Booking created. Proceed with eSewa payment.',
             'booking' => $booking,
             'payment' => [
+                'payment_url' => config('services.esewa.payment_url'),
                 'amount' => $amount,
                 'tax_amount' => $tax_amount,
                 'total_amount' => $total_amount,
@@ -126,10 +127,35 @@ class BookControllerAPI extends Controller
             ], 400);
         }
 
+        // Verify signature for security
+        if (isset($data['signed_field_names']) && isset($data['signature'])) {
+            $secret_key = config('services.esewa.secret_key');
+            $signedFields = explode(',', $data['signed_field_names']);
+            $message = '';
+            foreach ($signedFields as $field) {
+                if (isset($data[$field])) {
+                    $message .= "$field={$data[$field]}";
+                    if ($field !== end($signedFields)) {
+                        $message .= ',';
+                    }
+                }
+            }
+            $expectedSignature = base64_encode(hash_hmac('sha256', $message, $secret_key, true));
+            
+            if ($data['signature'] !== $expectedSignature) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Invalid payment signature. Possible fraud attempt.'
+                ], 400);
+            }
+        }
+
         if ($data['status'] == "COMPLETE") {
+            // Mark payment as Paid and auto-confirm booking
             $updated = Book::where('transaction_uuid', $data['transaction_uuid'])
-                ->where('status', 'PendingPayment')
-                ->update(['status' => 'Confirmed']);
+                ->where('payment_status', '!=', 'Paid')
+                ->where('status', '!=', 'Cancelled')
+                ->update(['payment_status' => 'Paid', 'status' => 'Confirmed']);
 
             if ($updated) {
                 $booking = Book::where('transaction_uuid', $data['transaction_uuid'])->first();
@@ -143,7 +169,7 @@ class BookControllerAPI extends Controller
             } else {
                 return response()->json([
                     'status' => 'error',
-                    'message' => 'Booking not found or already updated.',
+                    'message' => 'Booking not found or already processed.',
                     'payment_data' => $data
                 ], 404);
             }
@@ -170,17 +196,12 @@ class BookControllerAPI extends Controller
             ], 400);
         }
 
-        // Delete the failed booking
-        $deleted = Book::where('transaction_uuid', $txn)
-            ->where('status', 'PendingPayment')
-            ->delete();
+        // Mark the failed booking as cancelled and payment failed
+        $updated = Book::where('transaction_uuid', $txn)
+            ->where('payment_status', '!=', 'Paid')
+            ->update(['payment_status' => 'Failed', 'status' => 'Cancelled']);
 
-        // Alternative: mark it as failed instead of deleting
-        // $updated = Book::where('transaction_uuid', $txn)
-        //     ->where('status', 'PendingPayment')
-        //     ->update(['status' => 'Failed']);
-
-        if ($deleted) {
+        if ($updated) {
             return response()->json([
                 'status' => 'success',
                 'message' => 'Payment failed. Booking has been cancelled.',
@@ -378,6 +399,105 @@ class BookControllerAPI extends Controller
 
         return response()->json([
             'status' => 'success',
+            'booking' => $booking
+        ], 200);
+    }
+
+    /**
+     * Vendor approves a booking
+     */
+    public function vendorApproveBooking(Request $request, $id)
+    {
+        $vendor = $request->user();
+        if (!$vendor) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Unauthenticated.'
+            ], 401);
+        }
+
+        $booking = Book::with('court')->find($id);
+        if (!$booking) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Booking not found.'
+            ], 404);
+        }
+
+        if ($booking->court->vendor_id !== $vendor->id) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Unauthorized. This booking is not for your court.'
+            ], 403);
+        }
+
+        if ($booking->payment === 'eSewa' && $booking->payment_status !== 'Paid') {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Cannot approve booking until payment is completed.'
+            ], 400);
+        }
+
+        if ($booking->status !== 'Pending') {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Cannot approve booking with status: ' . $booking->status
+            ], 400);
+        }
+
+        $booking->status = 'Confirmed';
+        $booking->save();
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Booking approved.',
+            'booking' => $booking
+        ], 200);
+    }
+
+    /**
+     * Vendor rejects a booking
+     */
+    public function vendorRejectBooking(Request $request, $id)
+    {
+        $vendor = $request->user();
+        if (!$vendor) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Unauthenticated.'
+            ], 401);
+        }
+
+        $booking = Book::with('court')->find($id);
+        if (!$booking) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Booking not found.'
+            ], 404);
+        }
+
+        if ($booking->court->vendor_id !== $vendor->id) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Unauthorized. This booking is not for your court.'
+            ], 403);
+        }
+
+        if ($booking->status !== 'Pending') {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Cannot reject booking with status: ' . $booking->status
+            ], 400);
+        }
+
+        $booking->status = 'Rejected';
+        $booking->save();
+
+        // Optionally: handle refund for paid booking here
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Booking rejected.',
             'booking' => $booking
         ], 200);
     }
