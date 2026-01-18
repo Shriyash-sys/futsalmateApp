@@ -72,9 +72,16 @@ class LoginControllerAPI extends Controller
             ], 401);
         }
 
+        if (!($user instanceof User)) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'This endpoint is only for users.'
+            ], 403);
+        }
+
         // Attempt to revoke by current access token
         if ($user->currentAccessToken()) {
-            $user->currentAccessToken()->delete();
+            $user->tokens()->where('id', $user->currentAccessToken()->id)->delete();
         }
             
         // As a fallback remove all tokens for this user

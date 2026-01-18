@@ -7,6 +7,7 @@ use App\Http\Controllers\CourtControllerAPI;
 use App\Http\Controllers\LoginControllerAPI;
 use App\Http\Controllers\SignupControllerAPI;
 use App\Http\Controllers\VendorAuthController;
+use App\Http\Controllers\CommunityControllerAPI;
 use App\Http\Controllers\UserProfileControllerAPI;
 use App\Http\Controllers\EmailVerificationController;
 
@@ -32,26 +33,32 @@ Route::get('/user-dashboard', [UserProfileControllerAPI::class, 'userDashboard']
 Route::middleware('auth:sanctum')->get('/show-court', [CourtControllerAPI::class, 'showBookCourt']);
 
 // Booking endpoints
-Route::middleware('auth:sanctum')->post('/book', [BookControllerAPI::class, 'bookCourt']);
-Route::get('/book/esewa/success', [BookControllerAPI::class, 'success']);
-Route::get('/book/esewa/failure', [BookControllerAPI::class, 'failure']);
+Route::middleware('auth:sanctum')->controller(BookControllerAPI::class)->group(function () {
+    Route::post('/book', 'bookCourt');
+    Route::get('/book/esewa/success', 'success');
+    Route::get('/book/esewa/failure', 'failure');
+    Route::get('/book/booked-times', 'getBookedTimes');
+    Route::match(['put','patch'], '/edit-booking/{id}', 'editBooking');
+    Route::delete('/cancel-booking/{id}', 'cancelBooking');
+    Route::get('/book/booking-confirmation/{id}', 'showBookingConfirmation');
+    Route::get('/book/user-bookings/{id}', 'viewBooking');
+});
 
-// Edit/Cancel Booking endpoints
-Route::middleware('auth:sanctum')->match(['put','patch'], '/edit-booking/{id}', [BookControllerAPI::class, 'editBooking']);
-Route::middleware('auth:sanctum')->delete('/cancel-booking/{id}', [BookControllerAPI::class, 'cancelBooking']);
-
-// View Booking endpoints
-Route::get('/book/booked-times', [BookControllerAPI::class, 'getBookedTimes']);
-Route::get('/book/booking-confirmation/{id}', [BookControllerAPI::class, 'showBookingConfirmation']);
-Route::get('/book/user-bookings/{id}', [BookControllerAPI::class, 'viewBooking']);
+// Community (team) registration
+Route::middleware('auth:sanctum')->controller(CommunityControllerAPI::class)->group(function () {
+    Route::post('/community/register-team', 'registerTeam');    
+    Route::get('/community/user-communities', 'showTeams');
+    Route::delete('/community/delete-team/{id}', 'deleteTeam');
+    Route::match(['put', 'patch'], '/community/edit-team/{id}', 'editTeam');
+});
 
 // User profile
-Route::middleware('auth:sanctum')->get('/profile', [UserProfileControllerAPI::class, 'show']);
-Route::middleware('auth:sanctum')->match(['put','patch'],'/profile', [UserProfileControllerAPI::class, 'editProfile']);
-
-// Profile photo endpoints
-Route::middleware('auth:sanctum')->post('/profile/photo', [UserProfileControllerAPI::class, 'addProfilePhoto']);
-Route::middleware('auth:sanctum')->delete('/profile/photo', [UserProfileControllerAPI::class, 'deleteProfilePhoto']);
+Route::middleware('auth:sanctum')->controller(UserProfileControllerAPI::class)->group(function () {
+    Route::get('/profile', 'show');
+    Route::match(['put','patch'],'/profile', 'editProfile');
+    Route::post('/profile/photo', 'addProfilePhoto');
+    Route::delete('/profile/photo', 'deleteProfilePhoto');
+});
 
 // Logout endpoints (require authentication)
 Route::middleware('auth:sanctum')->post('/logout', [LoginControllerAPI::class, 'logout']);

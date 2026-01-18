@@ -2,12 +2,14 @@
 
 namespace App\Models;
 
+use Filament\Models\Contracts\FilamentUser;
 use Filament\Models\Contracts\HasName;
+use Filament\Panel;
 use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 
-class Admin extends Authenticatable implements HasName
+class Admin extends Authenticatable implements HasName, FilamentUser
 {
     use HasFactory, HasApiTokens;
 
@@ -48,6 +50,18 @@ class Admin extends Authenticatable implements HasName
     ];
 
     /**
+     * Get the attributes that should be cast.
+     *
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'password' => 'hashed',
+        ];
+    }
+
+    /**
      * Get the users associated with this admin.
      */
     public function users()
@@ -61,5 +75,13 @@ class Admin extends Authenticatable implements HasName
     public function getFilamentName(): string
     {
         return $this->full_name ?? $this->email ?? 'Admin';
+    }
+
+    /**
+     * Determine if the admin can access the given panel.
+     */
+    public function canAccessPanel(Panel $panel): bool
+    {
+        return true;
     }
 }
