@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Models\User;
+use App\Models\Court;
 use Illuminate\Database\Eloquent\Model;
 
 class Book extends Model
@@ -11,6 +13,8 @@ class Book extends Model
         'start_time',
         'end_time',
         'notes',
+        'customer_name',
+        'customer_phone',
         'payment',
         'payment_status',
         'price',
@@ -61,7 +65,6 @@ class Book extends Model
     {
         return match($this->payment) {
             'eSewa' => 'eSewa Digital Payment',
-            'Khalti' => 'Khalti Digital Payment',
             'Cash' => 'Cash Payment',
             default => $this->payment
         };

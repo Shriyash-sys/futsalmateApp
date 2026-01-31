@@ -6,7 +6,9 @@ use App\Models\Book;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Storage;
+
 
 class UserProfileControllerAPI extends Controller
 {

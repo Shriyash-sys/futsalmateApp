@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use Carbon\Carbon;
 use App\Models\Book;
 use App\Models\Court;
 use Illuminate\Support\Str;
 use Illuminate\Http\Request;
+use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
 
 class BookControllerAPI extends Controller
@@ -63,6 +65,7 @@ class BookControllerAPI extends Controller
                 'booking' => $booking
             ], 201);
         }
+
 
         // Prepare eSewa payment data
         $amount = $booking->price;
@@ -141,7 +144,7 @@ class BookControllerAPI extends Controller
                 }
             }
             $expectedSignature = base64_encode(hash_hmac('sha256', $message, $secret_key, true));
-            
+
             if ($data['signature'] !== $expectedSignature) {
                 return response()->json([
                     'status' => 'error',
@@ -159,7 +162,7 @@ class BookControllerAPI extends Controller
 
             if ($updated) {
                 $booking = Book::where('transaction_uuid', $data['transaction_uuid'])->first();
-                
+
                 return response()->json([
                     'status' => 'success',
                     'message' => 'Payment successful and booking confirmed.',
@@ -250,6 +253,16 @@ class BookControllerAPI extends Controller
             return response()->json([
                 'status' => 'error',
                 'message' => 'Cannot edit booking with status: ' . $booking->status
+            ], 400);
+        }
+
+        $startDateTime = Carbon::parse($booking->date . ' ' . $booking->start_time);
+        $cutoffTime = $startDateTime->copy()->subHours(2);
+
+        if (Carbon::now()->greaterThanOrEqualTo($cutoffTime)) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'You cannot edit within 2 hours of the match start time.'
             ], 400);
         }
 
@@ -355,6 +368,16 @@ class BookControllerAPI extends Controller
             return response()->json([
                 'status' => 'error',
                 'message' => 'Booking is already cancelled or rejected.'
+            ], 400);
+        }
+
+        $startDateTime = Carbon::parse($booking->date . ' ' . $booking->start_time);
+        $cutoffTime = $startDateTime->copy()->subHours(2);
+
+        if (Carbon::now()->greaterThanOrEqualTo($cutoffTime)) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'You cannot cancel within 2 hours of the match start time.'
             ], 400);
         }
 

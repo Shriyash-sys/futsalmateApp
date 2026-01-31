@@ -9,6 +9,7 @@ use App\Http\Controllers\SignupControllerAPI;
 use App\Http\Controllers\VendorAuthController;
 use App\Http\Controllers\CommunityControllerAPI;
 use App\Http\Controllers\UserProfileControllerAPI;
+use App\Http\Controllers\ManualBookingControllerAPI;
 use App\Http\Controllers\EmailVerificationController;
 
 Route::get('/user', function (Request $request) {
@@ -72,12 +73,16 @@ Route::post('/vendor/login', [VendorAuthController::class, 'vendorLogin']);
 // Vendor add-courts 
 Route::middleware('auth:sanctum')->post('/vendor/add-courts', [CourtControllerAPI::class, 'vendorAddCourt']);
 
-// Logout endpoints (require authentication)
-Route::middleware('auth:sanctum')->post('/vendor/logout', [VendorAuthController::class, 'vendorLogout']);
+// Vendor Manual Booking
+Route::middleware('auth:sanctum')->post('/vendor/manual-booking', [ManualBookingControllerAPI::class, 'manualBookCourt']);
 
 // Vendor booking approval endpoints
-Route::middleware('auth:sanctum')->post('/vendor/bookings/{id}/approve', [BookControllerAPI::class, 'vendorApproveBooking']);
-Route::middleware('auth:sanctum')->post('/vendor/bookings/{id}/reject', [BookControllerAPI::class, 'vendorRejectBooking']);
+Route::middleware('auth:sanctum')->controller(BookControllerAPI::class)->group(function () {
+    Route::post('/vendor/bookings/{id}/approve', 'vendorApproveBooking');
+    Route::post('/vendor/bookings/{id}/reject', 'vendorRejectBooking');
+});
 
+// Logout endpoints (require authentication)
+Route::middleware('auth:sanctum')->post('/vendor/logout', [VendorAuthController::class, 'vendorLogout']);
 
 

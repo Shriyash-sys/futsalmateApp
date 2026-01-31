@@ -2,11 +2,12 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use Throwable;
-use Illuminate\Support\Facades\Log;
-use App\Models\Community;
 use App\Models\User;
+use App\Models\Community;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+use App\Http\Controllers\Controller;
 
 class CommunityControllerAPI extends Controller
 {

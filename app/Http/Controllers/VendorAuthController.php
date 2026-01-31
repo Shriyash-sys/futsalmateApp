@@ -6,57 +6,58 @@ use Exception;
 use App\Models\Vendor;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Hash;
 
 class VendorAuthController extends Controller
 {
     // ----------------------------------------Vendor Signup----------------------------------------
 
-    public function vendorSignup(Request $request)
-    {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|email|max:255|unique:vendors,email',
-            'password' => 'required|string|min:8|confirmed',
-            'phone' => 'nullable|string|max:15|unique:vendors,phone',
-            'address' => 'required|string|max:500',
-            'owner_name' => 'required|string|max:255'
-        ]);
+    // public function vendorSignup(Request $request)
+    // {
+    //     $validated = $request->validate([
+    //         'name' => 'required|string|max:255',
+    //         'email' => 'required|email|max:255|unique:vendors,email',
+    //         'password' => 'required|string|min:8|confirmed',
+    //         'phone' => 'nullable|string|max:15|unique:vendors,phone',
+    //         'address' => 'required|string|max:500',
+    //         'owner_name' => 'required|string|max:255'
+    //     ]);
 
-        try {
-            // create vendor
-            $vendor = Vendor::create([
-                'name' => $validated['name'],
-                'email' => $validated['email'],
-                'password' => Hash::make($validated['password']),
-                'phone' => $validated['phone'] ?? null,
-                'address' => $validated['address'],
-                'owner_name' => $validated['owner_name']
-            ]);
+    //     try {
+    //         // create vendor
+    //         $vendor = Vendor::create([
+    //             'name' => $validated['name'],
+    //             'email' => $validated['email'],
+    //             'password' => Hash::make($validated['password']),
+    //             'phone' => $validated['phone'] ?? null,
+    //             'address' => $validated['address'],
+    //             'owner_name' => $validated['owner_name']
+    //         ]);
 
-            try {
-                $vendor->sendEmailVerificationNotification();
-            } catch (Exception $e) {
-                Log::error('Verification email failed to send to vendor: ' . $e->getMessage());
-                return response()->json([
-                    'status' => 'warning',
-                    'message' => 'Registered, but verification email failed. Please try again later.'
-                ], 200);
-            }
+    //         try {
+    //             $vendor->sendEmailVerificationNotification();
+    //         } catch (Exception $e) {
+    //             Log::error('Verification email failed to send to vendor: ' . $e->getMessage());
+    //             return response()->json([
+    //                 'status' => 'warning',
+    //                 'message' => 'Registered, but verification email failed. Please try again later.'
+    //             ], 200);
+    //         }
 
-            return response()->json([
-                'status' => 'success',
-                'message' => 'Vendor registered successfully. A verification code (OTP) has been sent to your email.',
-                'vendor' => $vendor
-            ], 201);
-        } catch (Exception $e) {
-            Log::error('Vendor signup failed: ' . $e->getMessage());
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Vendor registration failed. Please try again.'
-            ], 500);
-        }
-    }
+    //         return response()->json([
+    //             'status' => 'success',
+    //             'message' => 'Vendor registered successfully. A verification code (OTP) has been sent to your email.',
+    //             'vendor' => $vendor
+    //         ], 201);
+    //     } catch (Exception $e) {
+    //         Log::error('Vendor signup failed: ' . $e->getMessage());
+    //         return response()->json([
+    //             'status' => 'error',
+    //             'message' => 'Vendor registration failed. Please try again.'
+    //         ], 500);
+    //     }
+    // }
 
     // ---------------- Vendor Login ----------------
     public function vendorLogin(Request $request)
@@ -75,15 +76,15 @@ class VendorAuthController extends Controller
             ], 401);
         }
 
-        if (!$vendor->email_verified_at) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Please verify your vendor email before logging in.',
-                'actions' => [
-                    'resend_verification' => route('vendor.verification.resend.otp')
-                ]
-            ], 403);
-        }
+        // if (!$vendor->email_verified_at) {
+        //     return response()->json([
+        //         'status' => 'error',
+        //         'message' => 'Please verify your vendor email before logging in.',
+        //         'actions' => [
+        //             'resend_verification' => route('vendor.verification.resend.otp')
+        //         ]
+        //     ], 403);
+        // }
 
         $token = $vendor->createToken('vendor-token')->plainTextToken;
 

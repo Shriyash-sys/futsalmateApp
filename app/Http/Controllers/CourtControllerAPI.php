@@ -7,6 +7,7 @@ use App\Models\Court;
 use App\Models\Vendor;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Storage;
 
 class CourtControllerAPI extends Controller
