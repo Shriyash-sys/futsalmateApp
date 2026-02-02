@@ -42,6 +42,33 @@ class BookControllerAPI extends Controller
             ], 404);
         }
 
+        // Validate that start_time and end_time are within court's opening and closing hours
+        $startTime = strtotime($validated['start_time']);
+        $endTime = strtotime($validated['end_time']);
+        $courtOpeningTime = strtotime($court->opening_time);
+        $courtClosingTime = strtotime($court->closing_time);
+
+        if ($startTime < $courtOpeningTime) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Start time must be after or equal to court opening time (' . $court->opening_time . ').'
+            ], 400);
+        }
+
+        if ($endTime > $courtClosingTime) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'End time must be before or equal to court closing time (' . $court->closing_time . ').'
+            ], 400);
+        }
+
+        if ($startTime >= $endTime) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Start time must be before end time.'
+            ], 400);
+        }
+
         $transaction_uuid = Str::uuid()->toString();
 
         $booking = Book::create([
@@ -65,7 +92,6 @@ class BookControllerAPI extends Controller
                 'booking' => $booking
             ], 201);
         }
-
 
         // Prepare eSewa payment data
         $amount = $booking->price;
@@ -220,7 +246,7 @@ class BookControllerAPI extends Controller
     }
 
     /**
-     * Edit a booking
+     * Edit a booking for user
      */
     public function editBooking(Request $request, $id)
     {
@@ -307,7 +333,7 @@ class BookControllerAPI extends Controller
     }
 
     /**
-     * Get booking confirmation details
+     * Get booking confirmation details for user
      */
     public function showBookingConfirmation(Request $request, $id)
     {
@@ -342,7 +368,7 @@ class BookControllerAPI extends Controller
     }
 
     /**
-     * Cancel a booking
+     * Cancel a booking for user
      */
     public function cancelBooking(Request $request, $id)
     {
@@ -392,7 +418,7 @@ class BookControllerAPI extends Controller
     }
 
     /**
-     * View booking details
+     * View booking details for user
      */
     public function viewBooking(Request $request, $id)
     {
@@ -422,105 +448,6 @@ class BookControllerAPI extends Controller
 
         return response()->json([
             'status' => 'success',
-            'booking' => $booking
-        ], 200);
-    }
-
-    /**
-     * Vendor approves a booking
-     */
-    public function vendorApproveBooking(Request $request, $id)
-    {
-        $vendor = $request->user();
-        if (!$vendor) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Unauthenticated.'
-            ], 401);
-        }
-
-        $booking = Book::with('court')->find($id);
-        if (!$booking) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Booking not found.'
-            ], 404);
-        }
-
-        if ($booking->court->vendor_id !== $vendor->id) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Unauthorized. This booking is not for your court.'
-            ], 403);
-        }
-
-        if ($booking->payment === 'eSewa' && $booking->payment_status !== 'Paid') {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Cannot approve booking until payment is completed.'
-            ], 400);
-        }
-
-        if ($booking->status !== 'Pending') {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Cannot approve booking with status: ' . $booking->status
-            ], 400);
-        }
-
-        $booking->status = 'Confirmed';
-        $booking->save();
-
-        return response()->json([
-            'status' => 'success',
-            'message' => 'Booking approved.',
-            'booking' => $booking
-        ], 200);
-    }
-
-    /**
-     * Vendor rejects a booking
-     */
-    public function vendorRejectBooking(Request $request, $id)
-    {
-        $vendor = $request->user();
-        if (!$vendor) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Unauthenticated.'
-            ], 401);
-        }
-
-        $booking = Book::with('court')->find($id);
-        if (!$booking) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Booking not found.'
-            ], 404);
-        }
-
-        if ($booking->court->vendor_id !== $vendor->id) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Unauthorized. This booking is not for your court.'
-            ], 403);
-        }
-
-        if ($booking->status !== 'Pending') {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Cannot reject booking with status: ' . $booking->status
-            ], 400);
-        }
-
-        $booking->status = 'Rejected';
-        $booking->save();
-
-        // Optionally: handle refund for paid booking here
-
-        return response()->json([
-            'status' => 'success',
-            'message' => 'Booking rejected.',
             'booking' => $booking
         ], 200);
     }

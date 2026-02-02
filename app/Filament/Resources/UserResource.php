@@ -2,21 +2,27 @@
 
 namespace App\Filament\Resources;
 
-use App\Filament\Resources\UserResource\Pages;
 use App\Models\User;
-use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteAction;
-use Filament\Actions\DeleteBulkAction;
-use Filament\Actions\EditAction;
-use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Select;
-use Filament\Forms\Components\Toggle;
-use Filament\Forms\Components\FileUpload;
-use Filament\Resources\Resource;
-use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Filament\Schemas\Schema;
+use Filament\Tables\Columns;
+use Filament\Actions\EditAction;
+use Filament\Resources\Resource;
+use Filament\Actions\DeleteAction;
 use Illuminate\Support\Facades\Hash;
+use Filament\Actions\BulkActionGroup;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Toggle;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Tables\Columns\IconColumn;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Columns\ImageColumn;
+use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Filters\TernaryFilter;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\FileUpload;
+use App\Filament\Resources\UserResource\Pages;
 
 class UserResource extends Resource
 {
@@ -78,53 +84,53 @@ class UserResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('full_name')
+                TextColumn::make('full_name')
                     ->searchable()
                     ->sortable()
                     ->label('Name'),
-                Tables\Columns\TextColumn::make('email')
+                TextColumn::make('email')
                     ->searchable()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('phone')
+                TextColumn::make('phone')
                     ->searchable()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('user_type')
-                    ->badge()
-                    ->color(fn (string $state): string => match ($state) {
-                        'admin' => 'danger',
-                        'vendor' => 'warning',
-                        'user' => 'success',
-                        default => 'gray',
-                    })
-                    ->sortable(),
-                Tables\Columns\IconColumn::make('terms')
+                // TextColumn::make('user_type')
+                //     ->badge()
+                //     ->color(fn (string $state): string => match ($state) {
+                //         'admin' => 'danger',
+                //         'vendor' => 'warning',
+                //         'user' => 'success',
+                //         default => 'gray',
+                //     })
+                //     ->sortable(),
+                IconColumn::make('terms')
                     ->boolean()
                     ->label('Terms'),
-                Tables\Columns\ImageColumn::make('profile_photo_url')
+                ImageColumn::make('profile_photo_url')
                     ->label('Photo')
                     ->circular()
                     ->toggleable(),
-                Tables\Columns\TextColumn::make('email_verified_at')
+                TextColumn::make('email_verified_at')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
-                Tables\Columns\TextColumn::make('created_at')
+                TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
-                Tables\Columns\TextColumn::make('updated_at')
+                TextColumn::make('updated_at')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                Tables\Filters\SelectFilter::make('user_type')
+                SelectFilter::make('user_type')
                     ->options([
                         'user' => 'User',
                         'admin' => 'Admin',
                         'vendor' => 'Vendor',
                     ]),
-                Tables\Filters\TernaryFilter::make('terms')
+                TernaryFilter::make('terms')
                     ->label('Terms Accepted'),
             ])
             ->recordActions([

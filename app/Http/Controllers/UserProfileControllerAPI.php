@@ -9,7 +9,6 @@ use Illuminate\Validation\Rule;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Storage;
 
-
 class UserProfileControllerAPI extends Controller
 {
     // ----------------------------------------User Dashboard----------------------------------------

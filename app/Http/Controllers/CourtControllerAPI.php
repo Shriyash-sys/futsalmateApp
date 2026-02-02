@@ -25,192 +25,95 @@ class CourtControllerAPI extends Controller
     }
 
     /**
-     * Vendor: add a court
+     * Show individual active court details for booking
      */
-    public function vendorAddCourt(Request $request)
+    public function showCourtDetail($courtId)
     {
-        $validated = $request->validate([
-            'court_name' => 'required|string|max:255',
-            'location' => 'required|string|max:255',
-            'price' => 'required|string|max:255',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
-            'description' => 'nullable|string|max:1000',
-            'status' => 'nullable|in:active,inactive',
-            'latitude' => 'nullable|numeric|between:-90,90',
-            'longitude' => 'nullable|numeric|between:-180,180'
-        ]);
-
-        $actor = $request->user();
-        Log::info('vendorAddCourt called', ['actor' => $actor?->id, 'actor_class' => $actor ? get_class($actor) : null]);
-
-        if (!($actor instanceof Vendor)) {
-            Log::warning('vendorAddCourt: unauthorized actor', ['actor' => $actor?->id]);
-            return response()->json([
-                'status' => 'error',
-                'message' => 'This endpoint is only for vendors.'
-            ], 403);
-        }
-
-        // Handle optional image upload
-        $imageUrl = null;
         try {
-            if ($request->hasFile('image')) {
-                $imagePath = $request->file('image')->store('images', 'public');
-                $imageUrl = Storage::url($imagePath);
-                Log::info('vendorAddCourt: image stored', ['path' => $imagePath, 'url' => $imageUrl]);
+            $court = Court::where('id', $courtId)
+                ->where('status', 'active')
+                ->with('vendor')
+                ->first();
+
+            if (!$court) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Court not found or is inactive'
+                ], 404);
             }
 
-            Log::info('vendorAddCourt: validated payload', ['validated' => $validated]);
+            // Get today's bookings to show availability
+            $todayBookings = $court->books()
+                ->where('date', now()->toDateString())
+                ->where('status', 'Confirmed')
+                ->orderBy('start_time', 'asc')
+                ->get(['start_time', 'end_time', 'customer_name']);
 
-            $court = Court::create([
-                'court_name' => $validated['court_name'],
-                'location' => $validated['location'],
-                'price' => $validated['price'],
-                'image' => $imageUrl,
-                'description' => $validated['description'] ?? null,
-                'status' => $validated['status'] ?? 'inactive',
-                'latitude' => isset($validated['latitude']) ? $validated['latitude'] : null,
-                'longitude' => isset($validated['longitude']) ? $validated['longitude'] : null,
-                'vendor_id' => $actor->id
-            ]);
+            // Calculate available time slots (assuming 12-hour operation: 8 AM to 8 PM)
+            $availableSlots = $this->getAvailableSlots($todayBookings);
 
-            Log::info('vendorAddCourt: court created', ['court_id' => $court->id]);
+            $courtDetail = [
+                'id' => $court->id,
+                'court_name' => $court->court_name,
+                'location' => $court->location,
+                'price' => $court->price,
+                'description' => $court->description,
+                'image' => $court->image,
+                'latitude' => $court->latitude,
+                'longitude' => $court->longitude,
+                'vendor' => [
+                    'id' => $court->vendor->id,
+                    'name' => $court->vendor->name,
+                    'phone' => $court->vendor->phone,
+                    'email' => $court->vendor->email,
+                ],
+                'today_bookings' => $todayBookings,
+                'available_slots' => $availableSlots,
+                'total_slots' => 12,
+                'booked_slots' => count($todayBookings),
+                'available_slots_count' => 12 - count($todayBookings),
+            ];
 
             return response()->json([
                 'status' => 'success',
-                'message' => 'Court added successfully.',
-                'court' => $court
-            ], 201);
+                'data' => $courtDetail
+            ], 200);
+
         } catch (Throwable $e) {
-            Log::error('vendorAddCourt failed', ['error' => $e->getMessage()]);
+            Log::error('Error fetching court detail: ' . $e->getMessage());
             return response()->json([
                 'status' => 'error',
-                'message' => 'Failed to add court. See server logs for details.'
+                'message' => 'Failed to fetch court details'
             ], 500);
         }
     }
 
     /**
-     * Vendor: edit a court
+     * Helper function to calculate available time slots
      */
-    public function vendorEditCourt(Request $request, $courtId)
+    private function getAvailableSlots($bookings)
     {
-        $validated = $request->validate([
-            'court_name' => 'nullable|string|max:255',
-            'location' => 'nullable|string|max:255',
-            'price' => 'nullable|string|max:255',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
-            'description' => 'nullable|string|max:1000',
-            'status' => 'nullable|in:active,inactive',
-            'latitude' => 'nullable|numeric|between:-90,90',
-            'longitude' => 'nullable|numeric|between:-180,180'
-        ]);
-
-        $actor = $request->user();
-        Log::info('vendorEditCourt called', ['actor' => $actor?->id, 'court_id' => $courtId]);
-
-        if (!($actor instanceof Vendor)) {
-            Log::warning('vendorEditCourt: unauthorized actor', ['actor' => $actor?->id]);
-            return response()->json([
-                'status' => 'error',
-                'message' => 'This endpoint is only for vendors.'
-            ], 403);
+        // Operating hours: 8 AM to 8 PM (12 slots of 1 hour each)
+        $slots = [];
+        for ($hour = 8; $hour < 20; $hour++) {
+            $slotStart = str_pad($hour, 2, '0', 0) . ':00:00';
+            $slotEnd = str_pad($hour + 1, 2, '0', 0) . ':00:00';
+            
+            $isBooked = false;
+            foreach ($bookings as $booking) {
+                if ($booking->start_time <= $slotStart && $slotEnd <= $booking->end_time) {
+                    $isBooked = true;
+                    break;
+                }
+            }
+            
+            $slots[] = [
+                'start_time' => $slotStart,
+                'end_time' => $slotEnd,
+                'is_available' => !$isBooked,
+            ];
         }
-
-        try {
-            $court = Court::find($courtId);
-
-            if (!$court) {
-                Log::warning('vendorEditCourt: court not found', ['court_id' => $courtId]);
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'Court not found.'
-                ], 404);
-            }
-
-            if ($court->vendor_id !== $actor->id) {
-                Log::warning('vendorEditCourt: unauthorized access', ['actor' => $actor->id, 'court_vendor' => $court->vendor_id]);
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'You are not authorized to edit this court.'
-                ], 403);
-            }
-
-            /** @var Court $court */
-            // Handle optional image upload
-            if ($request->hasFile('image')) {
-                $imagePath = $request->file('image')->store('images', 'public');
-                $imageUrl = Storage::url($imagePath);
-                $validated['image'] = $imageUrl;
-                Log::info('vendorEditCourt: image stored', ['path' => $imagePath, 'url' => $imageUrl]);
-            }
-
-            $court->update($validated);
-            Log::info('vendorEditCourt: court updated', ['court_id' => $court->id]);
-
-            return response()->json([
-                'status' => 'success',
-                'message' => 'Court updated successfully.',
-                'court' => $court
-            ], 200);
-        } catch (Throwable $e) {
-            Log::error('vendorEditCourt failed', ['error' => $e->getMessage()]);
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Failed to edit court. See server logs for details.'
-            ], 500);
-        }
+        return $slots;
     }
 
-    /**
-     * Vendor: delete a court
-     */
-    public function vendorDeleteCourt(Request $request, $courtId)
-    {
-        $actor = $request->user();
-        Log::info('vendorDeleteCourt called', ['actor' => $actor?->id, 'court_id' => $courtId]);
-
-        if (!($actor instanceof Vendor)) {
-            Log::warning('vendorDeleteCourt: unauthorized actor', ['actor' => $actor?->id]);
-            return response()->json([
-                'status' => 'error',
-                'message' => 'This endpoint is only for vendors.'
-            ], 403);
-        }
-
-        try {
-            $court = Court::find($courtId);
-
-            if (!$court) {
-                Log::warning('vendorDeleteCourt: court not found', ['court_id' => $courtId]);
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'Court not found.'
-                ], 404);
-            }
-
-            if ($court->vendor_id !== $actor->id) {
-                Log::warning('vendorDeleteCourt: unauthorized access', ['actor' => $actor->id, 'court_vendor' => $court->vendor_id]);
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'You are not authorized to delete this court.'
-                ], 403);
-            }
-
-            /** @var Court $court */
-            $court->delete();
-            Log::info('vendorDeleteCourt: court deleted', ['court_id' => $courtId]);
-
-            return response()->json([
-                'status' => 'success',
-                'message' => 'Court deleted successfully.'
-            ], 200);
-        } catch (Throwable $e) {
-            Log::error('vendorDeleteCourt failed', ['error' => $e->getMessage()]);
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Failed to delete court. See server logs for details.'
-            ], 500);
-        }
-    }
 }

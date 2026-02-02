@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Throwable;
 use App\Models\User;
+use App\Models\Court;
 use App\Models\Community;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -17,11 +18,11 @@ class CommunityControllerAPI extends Controller
 	public function registerTeam(Request $request)
 	{
 		$validated = $request->validate([
-			'full_name' => 'required|string|max:255',
-			'location' => 'nullable|string|max:255',
+			'team_name' => 'required|string|max:255',
+			'preferred_courts' => 'nullable|string|max:255',
 			'phone' => 'nullable|string|max:50',
-			'members' => 'nullable|integer|min:0',
 			'description' => 'nullable|string|max:1000',
+			'preferred_days' => 'nullable|string',
 		]);
 
 		$actor = $request->user();
@@ -37,11 +38,11 @@ class CommunityControllerAPI extends Controller
 
 		try {
 			$community = Community::create([
-				'full_name' => $validated['full_name'],
-				'location' => $validated['location'] ?? null,
+				'team_name' => $validated['team_name'],
+				'preferred_courts' => $validated['preferred_courts'] ?? null,
 				'phone' => $validated['phone'] ?? null,
-				'members' => $validated['members'] ?? 0,
 				'description' => $validated['description'] ?? null,
+				'preferred_days' => $validated['preferred_days'] ?? null,
 				'user_id' => $actor->id,
 			]);
 
@@ -201,6 +202,28 @@ class CommunityControllerAPI extends Controller
 			return response()->json([
 				'status' => 'error',
 				'message' => 'Failed to delete team. See server logs for details.'
+			], 500);
+		}
+	}
+
+	/**
+	 * Get all available courts
+	 */
+	public function getAvailableCourts(Request $request)
+	{
+		Log::info('getAvailableCourts called');
+
+		try {
+			$courts = Court::all(['id', 'name', 'location']);
+			return response()->json([
+				'status' => 'success',
+				'courts' => $courts,
+			], 200);
+		} catch (Throwable $e) {
+			Log::error('getAvailableCourts failed', ['error' => $e->getMessage()]);
+			return response()->json([
+				'status' => 'error',
+				'message' => 'Failed to fetch courts. See server logs for details.'
 			], 500);
 		}
 	}

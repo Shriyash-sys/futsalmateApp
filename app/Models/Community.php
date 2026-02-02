@@ -11,12 +11,17 @@ class Community extends Model
     use HasFactory;
 
     protected $fillable = [
-        'full_name',
-        'location',
+        'team_name',
         'phone',
-        'members',
         'description',
+        'preferred_courts',
+        'preferred_days',
         'user_id'
+    ];
+
+    protected $casts = [
+        'preferred_courts' => 'array',
+        'preferred_days' => 'array'
     ];
 
     /**
@@ -25,5 +30,5 @@ class Community extends Model
     public function user()
     {
         return $this->belongsTo(User::class);
-    }
+    } 
 }

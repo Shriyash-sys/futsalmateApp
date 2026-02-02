@@ -15,16 +15,20 @@ class Court extends Model
         'location',
         'price',
         'image',
+        'facilities',
         'description',
         'status',
         'vendor_id',
         'latitude',
-        'longitude'
+        'longitude',
+        'opening_time',
+        'closing_time'
     ];
 
     protected $casts = [
         'availability' => 'array',
         'image' => 'string',
+        'facilities' => 'array',
         'latitude' => 'float',
         'longitude' => 'float'
     ];

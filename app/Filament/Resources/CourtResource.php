@@ -53,6 +53,12 @@ class CourtResource extends Resource
                 TextInput::make('longitude')
                     ->numeric()
                     ->step(0.0000001),
+                TextInput::make('opening_time')
+                    ->type('time')
+                    ->label('Opening Time'),
+                TextInput::make('closing_time')
+                    ->type('time')
+                    ->label('Closing Time'),
                 Textarea::make('description')
                     ->rows(3)
                     ->columnSpanFull(),
@@ -91,6 +97,12 @@ class CourtResource extends Resource
                 TextColumn::make('price')
                     ->money('NPR')
                     ->sortable(),
+                TextColumn::make('opening_time')
+                    ->time()
+                    ->label('Opens At'),
+                TextColumn::make('closing_time')
+                    ->time()
+                    ->label('Closes At'),
                 TextColumn::make('vendor.name')
                     ->searchable()
                     ->sortable()

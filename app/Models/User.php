@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Models\Admin;
 use App\Models\Vendor;
+use App\Models\Community;
 use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
@@ -47,6 +48,11 @@ class User extends Authenticatable implements MustVerifyEmail
     public function admin()
     {
         return $this->belongsTo(Admin::class);
+    }
+
+    public function communities()
+    {
+        return $this->hasMany(Community::class);
     }
 
     /**
