@@ -15,7 +15,7 @@ return new class extends Migration
             $table->renameColumn('full_name', 'team_name');
             $table->renameColumn('location', 'preferred_courts');
             $table->dropColumn('members');
-            $table->string('preferred_days')->nullable()->after('preferred_courts');
+            $table->json('preferred_days')->nullable()->after('preferred_courts')->comment('Array of selected days: Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday');
         });
     }
 

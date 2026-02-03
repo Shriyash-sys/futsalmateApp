@@ -53,6 +53,22 @@ class ManualBookingControllerAPI extends Controller
             ], 404);
         }
 
+        // Check if booking times are within court's operating hours
+        if ($validated['start_time'] < $court->opening_time || $validated['end_time'] > $court->closing_time) {
+            return response()->json([
+                'status' => 'error',
+                'message' => "Booking time must be between court's operating hours ({$court->opening_time} - {$court->closing_time})."
+            ], 422);
+        }
+
+        // Check if start_time is before end_time
+        if ($validated['start_time'] >= $validated['end_time']) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Start time must be before end time.'
+            ], 422);
+        }
+
         // Check for time slot conflicts
         $conflictingBooking = Book::where('court_id', $validated['court_id'])
             ->where('date', $validated['date'])
@@ -63,7 +79,7 @@ class ManualBookingControllerAPI extends Controller
                     ->orWhereBetween('end_time', [$validated['start_time'], $validated['end_time']])
                     ->orWhere(function ($q) use ($validated) {
                         $q->where('start_time', '<=', $validated['start_time'])
-                          ->where('end_time', '>=', $validated['end_time']);
+                            ->where('end_time', '>=', $validated['end_time']);
                     });
             })
             ->exists();
@@ -77,9 +93,8 @@ class ManualBookingControllerAPI extends Controller
 
         $transaction_uuid = Str::uuid()->toString();
 
-        $paymentStatus = $validated['payment'] === 'Cash' ? 'Pending' : 'Paid';
-        $bookingStatus = $validated['payment'] === 'Cash' ? 'Pending' : 'Confirmed';
-
+        // For manual bookings, both payment methods are marked as Paid and Confirmed
+        // since the vendor is recording a completed transaction
         $booking = Book::create([
             'transaction_uuid' => $transaction_uuid,
             'date' => $validated['date'],
@@ -92,8 +107,8 @@ class ManualBookingControllerAPI extends Controller
             'court_id' => $validated['court_id'],
             'user_id' => null,
             'price' => $court->price,
-            'payment_status' => $paymentStatus,
-            'status' => $bookingStatus,
+            'payment_status' => 'Paid',
+            'status' => 'Confirmed',
         ]);
 
         return response()->json([

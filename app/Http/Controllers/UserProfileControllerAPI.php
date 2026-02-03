@@ -6,7 +6,9 @@ use App\Models\Book;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use App\Notifications\UserEmailOtp;
 use App\Http\Controllers\Controller;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 
 class UserProfileControllerAPI extends Controller
@@ -15,7 +17,7 @@ class UserProfileControllerAPI extends Controller
     public function userDashboard(Request $request)
     {
         $user = $request->user();
-        if(!$user) {
+        if (!$user) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'Unauthenticated.'
@@ -29,13 +31,13 @@ class UserProfileControllerAPI extends Controller
 
         $upcomingBookings = Book::where('user_id', $user->id)
             ->with('court')
-            ->where(function($query) use ($today, $currentTime) {
+            ->where(function ($query) use ($today, $currentTime) {
                 // Bookings in the future (date > today)
                 $query->where('date', '>', $today)
                     // OR bookings today with start_time >= current time
-                    ->orWhere(function($q) use ($today, $currentTime) {
+                    ->orWhere(function ($q) use ($today, $currentTime) {
                         $q->where('date', '=', $today)
-                          ->where('start_time', '>=', $currentTime);
+                            ->where('start_time', '>=', $currentTime);
                     });
             })
             ->whereNotIn('status', ['Cancelled', 'Rejected'])
@@ -207,5 +209,49 @@ class UserProfileControllerAPI extends Controller
             'status' => 'error',
             'message' => 'No profile photo found.'
         ], 404);
+    }
+
+    // ----------------------------------------Change Password----------------------------------------
+    public function changePassword(Request $request)
+    {
+        $user = $request->user();
+
+        if (!$user || !($user instanceof User)) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Unauthenticated.'
+            ], 401);
+        }
+
+        $validated = $request->validate([
+            'current_password' => 'required|string',
+            'new_password' => 'required|string|min:8|confirmed',
+            'new_password_confirmation' => 'required|string',
+        ]);
+
+        // Check if current password is correct
+        if (!Hash::check($validated['current_password'], $user->password)) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Current password is incorrect.'
+            ], 422);
+        }
+
+        // Check if new password is same as current password
+        if (Hash::check($validated['new_password'], $user->password)) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'New password must be different from current password.'
+            ], 422);
+        }
+
+        // Update password
+        $user->password = Hash::make($validated['new_password']);
+        $user->save();
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Password changed successfully.'
+        ], 200);
     }
 }
