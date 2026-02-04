@@ -12,7 +12,10 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        //
+        $middleware->alias([
+            'vendor' => \App\Http\Middleware\EnsureUserisVendor::class,
+            'customer' => \App\Http\Middleware\EnsureUserisCustomer::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

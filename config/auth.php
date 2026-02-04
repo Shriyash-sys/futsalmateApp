@@ -2,6 +2,7 @@
 
 use App\Models\User;
 use App\Models\Admin;
+use App\Models\Vendor;
 
 return [
 
@@ -47,6 +48,10 @@ return [
             'driver' => 'session',
             'provider' => 'admins',
         ],
+        'vendor' => [
+            'driver' => 'session',
+            'provider' => 'vendors',
+        ],
     ],
 
     /*
@@ -69,11 +74,15 @@ return [
     'providers' => [
         'users' => [
             'driver' => 'eloquent',
-            'model' => env('AUTH_MODEL', User::class),
+            'model' => User::class,
         ],
         'admins' => [
             'driver' => 'eloquent',
             'model' => Admin::class,
+        ],
+        'vendors' => [
+            'driver' => 'eloquent',
+            'model' => Vendor::class,
         ],
 
         // 'users' => [

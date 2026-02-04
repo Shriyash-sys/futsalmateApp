@@ -230,10 +230,14 @@ class VendorControllerAPI extends Controller
     public function vendorEditCourt(Request $request, $courtId)
     {
         $validated = $request->validate([
-            'court_name' => 'nullable|string|max:255',
-            'location' => 'nullable|string|max:255',
-            'price' => 'nullable|string|max:255',
+            'court_name' => 'required|string|max:255',
+            'location' => 'required|string|max:255',
+            'price' => 'required|string|max:255',
+            'images' => 'nullable|array|max:8',
+            'images.*' => 'image|mimes:jpeg,png,jpg,gif|max:2048',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'facilities' => 'nullable|array',
+            'facilities.*' => 'string|max:100',
             'description' => 'nullable|string|max:1000',
             'status' => 'nullable|in:active,inactive',
             'latitude' => 'nullable|numeric|between:-90,90',
@@ -241,13 +245,26 @@ class VendorControllerAPI extends Controller
         ]);
 
         $actor = $request->user();
-        Log::info('vendorEditCourt called', ['actor' => $actor?->id, 'court_id' => $courtId]);
 
-        if (!($actor instanceof Vendor)) {
-            Log::warning('vendorEditCourt: unauthorized actor', ['actor' => $actor?->id]);
+        if (!$actor) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'This endpoint is only for vendors.'
+                'message' => 'Unauthenticated. Please login first.',
+                'debug' => [
+                    'has_token' => !empty($request->bearerToken()),
+                    'token_preview' => $request->bearerToken() ? substr($request->bearerToken(), 0, 20) . '...' : null
+                ]
+            ], 401);
+        }
+
+        if (!($actor instanceof Vendor)) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'This endpoint is only for vendors.',
+                'debug' => [
+                    'actor_class' => get_class($actor),
+                    'actor_id' => $actor->id
+                ]
             ], 403);
         }
 
@@ -255,28 +272,74 @@ class VendorControllerAPI extends Controller
             $court = Court::find($courtId);
 
             if (!$court) {
-                Log::warning('vendorEditCourt: court not found', ['court_id' => $courtId]);
                 return response()->json([
                     'status' => 'error',
-                    'message' => 'Court not found.'
+                    'message' => 'Court not found.',
+                    'debug' => [
+                        'requested_court_id' => $courtId,
+                        'available_courts' => Court::pluck('id')->toArray()
+                    ]
                 ], 404);
             }
 
-            if ($court->vendor_id !== $actor->id) {
-                Log::warning('vendorEditCourt: unauthorized access', ['actor' => $actor->id, 'court_vendor' => $court->vendor_id]);
+            if ((int) $court->vendor_id !== (int) $actor->id) {
                 return response()->json([
                     'status' => 'error',
-                    'message' => 'You are not authorized to edit this court.'
+                    'message' => 'You are not authorized to edit this court.',
+                    'debug' => [
+                        'your_vendor_id' => (int) $actor->id,
+                        'court_owner_vendor_id' => (int) $court->vendor_id,
+                        'court_name' => $court->court_name,
+                        'match_check' => [
+                            'strict' => ($court->vendor_id === $actor->id),
+                            'loose' => ($court->vendor_id == $actor->id),
+                            'int_cast' => ((int) $court->vendor_id === (int) $actor->id)
+                        ]
+                    ]
                 ], 403);
             }
 
             /** @var Court $court */
-            // Handle optional image upload
+            // Handle optional image uploads (up to 8)
+            $imageUrls = [];
+            if ($request->hasFile('images')) {
+                foreach ($request->file('images') as $imageFile) {
+                    $imagePath = $imageFile->store('images', 'public');
+                    $imageUrls[] = Storage::url($imagePath);
+                    Log::info('vendorEditCourt: image stored', ['path' => $imagePath, 'url' => end($imageUrls)]);
+                }
+            }
+
             if ($request->hasFile('image')) {
                 $imagePath = $request->file('image')->store('images', 'public');
-                $imageUrl = Storage::url($imagePath);
-                $validated['image'] = $imageUrl;
-                Log::info('vendorEditCourt: image stored', ['path' => $imagePath, 'url' => $imageUrl]);
+                $imageUrls[] = Storage::url($imagePath);
+                Log::info('vendorEditCourt: image stored', ['path' => $imagePath, 'url' => end($imageUrls)]);
+            }
+
+            // Only update image field if new images were uploaded
+            if (count($imageUrls) > 0) {
+                $validated['image'] = json_encode($imageUrls);
+            } else {
+                // Remove image from validated data to preserve existing images
+                unset($validated['image']);
+            }
+
+            // Only update facilities if provided
+            if (!isset($validated['facilities']) || $validated['facilities'] === null) {
+                unset($validated['facilities']);
+            }
+
+            // Only update status if provided
+            if (!isset($validated['status']) || $validated['status'] === null) {
+                unset($validated['status']);
+            }
+
+            // Only update coordinates if provided
+            if (!isset($validated['latitude']) || $validated['latitude'] === null) {
+                unset($validated['latitude']);
+            }
+            if (!isset($validated['longitude']) || $validated['longitude'] === null) {
+                unset($validated['longitude']);
             }
 
             $court->update($validated);
@@ -302,13 +365,22 @@ class VendorControllerAPI extends Controller
     public function vendorDeleteCourt(Request $request, $courtId)
     {
         $actor = $request->user();
-        Log::info('vendorDeleteCourt called', ['actor' => $actor?->id, 'court_id' => $courtId]);
 
-        if (!($actor instanceof Vendor)) {
-            Log::warning('vendorDeleteCourt: unauthorized actor', ['actor' => $actor?->id]);
+        if (!$actor) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'This endpoint is only for vendors.'
+                'message' => 'Unauthenticated. Please login first.'
+            ], 401);
+        }
+
+        if (!($actor instanceof Vendor)) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'This endpoint is only for vendors.',
+                'debug' => [
+                    'actor_class' => get_class($actor),
+                    'actor_id' => $actor->id
+                ]
             ], 403);
         }
 
@@ -316,18 +388,24 @@ class VendorControllerAPI extends Controller
             $court = Court::find($courtId);
 
             if (!$court) {
-                Log::warning('vendorDeleteCourt: court not found', ['court_id' => $courtId]);
                 return response()->json([
                     'status' => 'error',
-                    'message' => 'Court not found.'
+                    'message' => 'Court not found.',
+                    'debug' => [
+                        'requested_court_id' => $courtId
+                    ]
                 ], 404);
             }
 
-            if ($court->vendor_id !== $actor->id) {
-                Log::warning('vendorDeleteCourt: unauthorized access', ['actor' => $actor->id, 'court_vendor' => $court->vendor_id]);
+            if ((int) $court->vendor_id !== (int) $actor->id) {
                 return response()->json([
                     'status' => 'error',
-                    'message' => 'You are not authorized to delete this court.'
+                    'message' => 'You are not authorized to delete this court.',
+                    'debug' => [
+                        'your_vendor_id' => (int) $actor->id,
+                        'court_owner_vendor_id' => (int) $court->vendor_id,
+                        'court_name' => $court->court_name
+                    ]
                 ], 403);
             }
 

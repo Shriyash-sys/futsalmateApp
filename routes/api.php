@@ -74,29 +74,42 @@ Route::middleware('auth:sanctum')->post('/logout', [LoginControllerAPI::class, '
 // Vendor authentication
 Route::post('/vendor/login', [VendorAuthController::class, 'vendorLogin']);
 
+// // Test route to check vendor authentication
+// Route::middleware('vendor')->get('/vendor/test-auth', function (Request $request) {
+//     $actor = $request->user();
+//     return response()->json([
+//         'authenticated' => $actor !== null,
+//         'user_class' => $actor ? get_class($actor) : null,
+//         'user_id' => $actor?->id,
+//         'user_email' => $actor?->email,
+//         'is_vendor' => $actor instanceof \App\Models\Vendor,
+//         'is_user' => $actor instanceof \App\Models\User,
+//     ]);
+// });
+
 // Vendor add-view-edit-delete courts 
-Route::middleware('auth:sanctum')->controller(VendorControllerAPI::class)->group(function () {
-        Route::get('/vendor/view-courts', 'viewVendorCourts');
-        Route::post('/vendor/add-courts', 'vendorAddCourt');
-        Route::match(['put','patch'],'/vendor/edit-courts/{id}', 'vendorEditCourt');
-        Route::delete('/vendor/delete-courts/{id}', 'vendorDeleteCourt');
+Route::middleware('vendor')->controller(VendorControllerAPI::class)->group(function () {
+    Route::get('/vendor/view-courts', 'viewVendorCourts');
+    Route::post('/vendor/add-courts', 'vendorAddCourt');
+    Route::put('/vendor/edit-courts/{id}', 'vendorEditCourt');
+    Route::delete('/vendor/delete-courts/{id}', 'vendorDeleteCourt');
 });
 
 // Vendor Manual Booking
-Route::middleware('auth:sanctum')->post('/vendor/manual-booking', [ManualBookingControllerAPI::class, 'manualBookCourt']);
+Route::middleware('vendor')->post('/vendor/manual-booking', [ManualBookingControllerAPI::class, 'manualBookCourt']);
 
 // Vendor booking approval endpoints
-Route::middleware('auth:sanctum')->controller(VendorBookingsControllerAPI::class)->group(function () {
+Route::middleware('vendor')->controller(VendorBookingsControllerAPI::class)->group(function () {
     Route::post('/vendor/bookings/{id}/approve', 'vendorApproveBooking');
     Route::post('/vendor/bookings/{id}/reject', 'vendorRejectBooking');
 });
 
-Route::middleware('auth:sanctum')->controller(VendorControllerAPI::class)->group(function () {
+Route::middleware('vendor')->controller(VendorControllerAPI::class)->group(function () {
     Route::get('/vendor/vendor-dashboard', 'vendorDashboard');
     Route::get('/vendor/view-customers', 'viewVendorCustomers');
 });
 
 // Logout endpoints (require authentication)
-Route::middleware('auth:sanctum')->post('/vendor/logout', [VendorAuthController::class, 'vendorLogout']);
+Route::middleware('vendor')->post('/vendor/logout', [VendorAuthController::class, 'vendorLogout']);
 
 
