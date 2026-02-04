@@ -43,7 +43,7 @@ Route::middleware(['auth:sanctum', 'customer'])->controller(BookControllerAPI::c
     Route::get('/book/esewa/success', 'success');
     Route::get('/book/esewa/failure', 'failure');
     Route::get('/book/booked-times', 'getBookedTimes');
-    Route::match(['put','patch'], '/edit-booking/{id}', 'editBooking');
+    Route::match(['put', 'patch'], '/edit-booking/{id}', 'editBooking');
     Route::delete('/cancel-booking/{id}', 'cancelBooking');
     Route::get('/book/booking-confirmation/{id}', 'showBookingConfirmation');
     Route::get('/book/user-bookings/{id}', 'viewBooking');
@@ -51,7 +51,7 @@ Route::middleware(['auth:sanctum', 'customer'])->controller(BookControllerAPI::c
 
 // Community (team) registration
 Route::middleware(['auth:sanctum', 'customer'])->controller(CommunityControllerAPI::class)->group(function () {
-    Route::post('/community/register-team', 'registerTeam');    
+    Route::post('/community/register-team', 'registerTeam');
     Route::get('/community/user-communities', 'showTeams');
     Route::delete('/community/delete-team/{id}', 'deleteTeam');
     Route::match(['put', 'patch'], '/community/edit-team/{id}', 'editTeam');
@@ -60,7 +60,7 @@ Route::middleware(['auth:sanctum', 'customer'])->controller(CommunityControllerA
 // User profile
 Route::middleware(['auth:sanctum', 'customer'])->controller(UserProfileControllerAPI::class)->group(function () {
     Route::get('/profile', 'show');
-    Route::match(['put','patch'],'/profile', 'editProfile');
+    Route::match(['put', 'patch'], '/profile', 'editProfile');
     Route::post('/profile/photo', 'addProfilePhoto');
     Route::delete('/profile/photo', 'deleteProfilePhoto');
 });
@@ -99,5 +99,3 @@ Route::middleware(['auth:sanctum', 'vendor'])->controller(VendorControllerAPI::c
 
 // Logout endpoints (require authentication)
 Route::middleware(['auth:sanctum', 'vendor'])->post('/vendor/logout', [VendorAuthController::class, 'vendorLogout']);
-
-
