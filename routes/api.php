@@ -88,7 +88,7 @@ Route::post('/vendor/login', [VendorAuthController::class, 'vendorLogin']);
 // });
 
 // Vendor add-view-edit-delete courts 
-Route::middleware('vendor')->controller(VendorControllerAPI::class)->group(function () {
+Route::middleware(['auth:sanctum', 'vendor'])->controller(VendorControllerAPI::class)->group(function () {
     Route::get('/vendor/view-courts', 'viewVendorCourts');
     Route::post('/vendor/add-courts', 'vendorAddCourt');
     Route::put('/vendor/edit-courts/{id}', 'vendorEditCourt');
