@@ -57,6 +57,8 @@ class CourtControllerAPI extends Controller
                 'price' => $court->price,
                 'description' => $court->description,
                 'image' => $court->image,
+                'opening_time' => $court->opening_time,
+                'closing_time' => $court->closing_time,
                 'latitude' => $court->latitude,
                 'longitude' => $court->longitude,
                 'vendor' => $court->vendor ? [
