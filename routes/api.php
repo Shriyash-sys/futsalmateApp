@@ -91,7 +91,7 @@ Route::post('/vendor/login', [VendorAuthController::class, 'vendorLogin']);
 Route::middleware(['auth:sanctum', 'vendor'])->controller(VendorControllerAPI::class)->group(function () {
     Route::get('/vendor/view-courts', 'viewVendorCourts');
     Route::post('/vendor/add-courts', 'vendorAddCourt');
-    Route::put('/vendor/edit-courts/{id}', 'vendorEditCourt');
+    Route::post('/vendor/edit-courts/{id}', 'vendorEditCourt');
     Route::delete('/vendor/delete-courts/{id}', 'vendorDeleteCourt');
 });
 
