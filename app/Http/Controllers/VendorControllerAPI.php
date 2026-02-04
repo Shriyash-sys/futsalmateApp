@@ -194,6 +194,27 @@ class VendorControllerAPI extends Controller
 
             Log::info('vendorAddCourt: validated payload', ['validated' => $validated]);
 
+            // Convert 12-hour AM/PM format to 24-hour format for database storage
+            if (isset($validated['opening_time']) && $validated['opening_time'] !== '') {
+                try {
+                    $validated['opening_time'] = \Carbon\Carbon::createFromFormat('h:i A', $validated['opening_time'])->format('H:i:s');
+                } catch (\Exception $e) {
+                    $validated['opening_time'] = null;
+                }
+            } else {
+                $validated['opening_time'] = null;
+            }
+            
+            if (isset($validated['closing_time']) && $validated['closing_time'] !== '') {
+                try {
+                    $validated['closing_time'] = \Carbon\Carbon::createFromFormat('h:i A', $validated['closing_time'])->format('H:i:s');
+                } catch (\Exception $e) {
+                    $validated['closing_time'] = null;
+                }
+            } else {
+                $validated['closing_time'] = null;
+            }
+
             $court = Court::create([
                 'court_name' => $validated['court_name'],
                 'location' => $validated['location'],
@@ -343,6 +364,27 @@ class VendorControllerAPI extends Controller
             }
             if (!isset($validated['longitude']) || $validated['longitude'] === null) {
                 unset($validated['longitude']);
+            }
+
+            // Convert 12-hour AM/PM format to 24-hour format for database storage
+            if (isset($validated['opening_time']) && $validated['opening_time'] !== '' && $validated['opening_time'] !== null) {
+                try {
+                    $validated['opening_time'] = \Carbon\Carbon::createFromFormat('h:i A', $validated['opening_time'])->format('H:i:s');
+                } catch (\Exception $e) {
+                    unset($validated['opening_time']);
+                }
+            } else {
+                unset($validated['opening_time']);
+            }
+            
+            if (isset($validated['closing_time']) && $validated['closing_time'] !== '' && $validated['closing_time'] !== null) {
+                try {
+                    $validated['closing_time'] = \Carbon\Carbon::createFromFormat('h:i A', $validated['closing_time'])->format('H:i:s');
+                } catch (\Exception $e) {
+                    unset($validated['closing_time']);
+                }
+            } else {
+                unset($validated['closing_time']);
             }
 
             $court->update($validated);
