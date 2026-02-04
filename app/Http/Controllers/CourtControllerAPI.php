@@ -31,7 +31,7 @@ class CourtControllerAPI extends Controller
     {
         try {
             $court = Court::where('id', $courtId)
-                ->where('status', 'active')
+                ->whereIn('status', ['active', 'Active'])
                 ->with('vendor')
                 ->first();
 
@@ -61,12 +61,12 @@ class CourtControllerAPI extends Controller
                 'image' => $court->image,
                 'latitude' => $court->latitude,
                 'longitude' => $court->longitude,
-                'vendor' => [
+                'vendor' => $court->vendor ? [
                     'id' => $court->vendor->id,
                     'name' => $court->vendor->name,
                     'phone' => $court->vendor->phone,
                     'email' => $court->vendor->email,
-                ],
+                ] : null,
                 'today_bookings' => $todayBookings,
                 'available_slots' => $availableSlots,
                 'total_slots' => 12,
@@ -78,9 +78,12 @@ class CourtControllerAPI extends Controller
                 'status' => 'success',
                 'data' => $courtDetail
             ], 200);
-
         } catch (Throwable $e) {
-            Log::error('Error fetching court detail: ' . $e->getMessage());
+            Log::error('Error fetching court detail', [
+                'court_id' => $courtId,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
             return response()->json([
                 'status' => 'error',
                 'message' => 'Failed to fetch court details'
@@ -98,7 +101,7 @@ class CourtControllerAPI extends Controller
         for ($hour = 8; $hour < 20; $hour++) {
             $slotStart = str_pad($hour, 2, '0', 0) . ':00:00';
             $slotEnd = str_pad($hour + 1, 2, '0', 0) . ':00:00';
-            
+
             $isBooked = false;
             foreach ($bookings as $booking) {
                 if ($booking->start_time <= $slotStart && $slotEnd <= $booking->end_time) {
@@ -106,7 +109,7 @@ class CourtControllerAPI extends Controller
                     break;
                 }
             }
-            
+
             $slots[] = [
                 'start_time' => $slotStart,
                 'end_time' => $slotEnd,
@@ -115,5 +118,4 @@ class CourtControllerAPI extends Controller
         }
         return $slots;
     }
-
 }
