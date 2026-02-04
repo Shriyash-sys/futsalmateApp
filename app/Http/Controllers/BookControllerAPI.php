@@ -475,4 +475,39 @@ class BookControllerAPI extends Controller
             'booking' => $booking
         ], 200);
     }
+
+    /**
+     * Get upcoming bookings for authenticated user
+     */
+    public function upcomingBookings(Request $request)
+    {
+        $user = $request->user();
+        if (!$user) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Unauthenticated.'
+            ], 401);
+        }
+
+        $now = Carbon::now();
+
+        $bookings = Book::with('court')
+            ->where('user_id', $user->id)
+            ->whereNotIn('status', ['Cancelled', 'Rejected'])
+            ->where(function ($query) use ($now) {
+                $query->where('date', '>', $now->toDateString())
+                    ->orWhere(function ($q) use ($now) {
+                        $q->where('date', $now->toDateString())
+                            ->where('end_time', '>', $now->format('H:i:s'));
+                    });
+            })
+            ->orderBy('date')
+            ->orderBy('start_time')
+            ->get();
+
+        return response()->json([
+            'status' => 'success',
+            'upcoming_bookings' => $bookings
+        ], 200);
+    }
 }
