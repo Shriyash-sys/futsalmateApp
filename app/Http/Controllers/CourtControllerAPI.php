@@ -51,7 +51,15 @@ class CourtControllerAPI extends Controller
                 ->get(['start_time', 'end_time', 'customer_name']);
 
             // Calculate available time slots (assuming 12-hour operation: 8 AM to 8 PM)
-            $availableSlots = $this->getAvailableSlots($todayBookings);
+            $availableSlots = [];
+            try {
+                $availableSlots = $this->getAvailableSlots($todayBookings ?? []);
+            } catch (Throwable $e) {
+                Log::warning('showCourtDetail: slot calculation failed', [
+                    'court_id' => $court->id,
+                    'error' => $e->getMessage()
+                ]);
+            }
 
             $courtDetail = [
                 'id' => $court->id,
@@ -71,8 +79,8 @@ class CourtControllerAPI extends Controller
                 'today_bookings' => $todayBookings,
                 'available_slots' => $availableSlots,
                 'total_slots' => 12,
-                'booked_slots' => count($todayBookings),
-                'available_slots_count' => 12 - count($todayBookings),
+                'booked_slots' => $todayBookings ? count($todayBookings) : 0,
+                'available_slots_count' => $todayBookings ? 12 - count($todayBookings) : 12,
             ];
 
             return response()->json([
