@@ -69,6 +69,14 @@ class BookControllerAPI extends Controller
             ], 400);
         }
 
+        $bookingStart = Carbon::parse($validated['date'] . ' ' . $validated['start_time']);
+        if ($bookingStart->isPast()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'You cannot book a past time slot.'
+            ], 400);
+        }
+
         $transaction_uuid = Str::uuid()->toString();
 
         $booking = Book::create([
