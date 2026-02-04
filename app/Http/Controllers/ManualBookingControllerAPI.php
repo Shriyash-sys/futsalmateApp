@@ -106,8 +106,7 @@ class ManualBookingControllerAPI extends Controller
 
         $transaction_uuid = Str::uuid()->toString();
 
-        // For manual bookings, both payment methods are marked as Paid and Confirmed
-        // since the vendor is recording a completed transaction
+        // For manual bookings, payment is pending and status is always confirmed
         $booking = Book::create([
             'transaction_uuid' => $transaction_uuid,
             'date' => $validated['date'],
@@ -120,7 +119,7 @@ class ManualBookingControllerAPI extends Controller
             'court_id' => $validated['court_id'],
             'user_id' => null,
             'price' => $court->price,
-            'payment_status' => 'Paid',
+            'payment_status' => 'Pending',
             'status' => 'Confirmed',
         ]);
 
