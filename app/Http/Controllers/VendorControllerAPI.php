@@ -158,8 +158,8 @@ class VendorControllerAPI extends Controller
             'facilities.*' => 'string|max:100',
             'description' => 'nullable|string|max:1000',
             'status' => 'nullable|in:active,inactive',
-            'opening_time' => 'nullable|date_format:h A',
-            'closing_time' => 'nullable|date_format:h A',
+            'opening_time' => 'nullable|date_format:g A',
+            'closing_time' => 'nullable|date_format:g A',
             'latitude' => 'nullable|numeric|between:-90,90',
             'longitude' => 'nullable|numeric|between:-180,180'
         ]);
@@ -197,7 +197,7 @@ class VendorControllerAPI extends Controller
             // Convert 12-hour AM/PM format to 24-hour format for database storage
             if (isset($validated['opening_time']) && $validated['opening_time'] !== '') {
                 try {
-                    $validated['opening_time'] = \Carbon\Carbon::createFromFormat('h A', $validated['opening_time'])->format('H:00:00');
+                    $validated['opening_time'] = \Carbon\Carbon::createFromFormat('g A', $validated['opening_time'])->format('H:00:00');
                 } catch (\Exception $e) {
                     $validated['opening_time'] = null;
                 }
@@ -207,7 +207,7 @@ class VendorControllerAPI extends Controller
             
             if (isset($validated['closing_time']) && $validated['closing_time'] !== '') {
                 try {
-                    $validated['closing_time'] = \Carbon\Carbon::createFromFormat('h A', $validated['closing_time'])->format('H:00:00');
+                    $validated['closing_time'] = \Carbon\Carbon::createFromFormat('g A', $validated['closing_time'])->format('H:00:00');
                 } catch (\Exception $e) {
                     $validated['closing_time'] = null;
                 }
@@ -262,8 +262,8 @@ class VendorControllerAPI extends Controller
             'facilities.*' => 'string|max:100',
             'description' => 'nullable|string|max:1000',
             'status' => 'nullable|in:active,inactive',
-            'opening_time' => 'nullable|date_format:h A',
-            'closing_time' => 'nullable|date_format:h A',
+            'opening_time' => 'nullable|date_format:g A',
+            'closing_time' => 'nullable|date_format:g A',
             'latitude' => 'nullable|numeric|between:-90,90',
             'longitude' => 'nullable|numeric|between:-180,180'
         ]);
@@ -369,7 +369,7 @@ class VendorControllerAPI extends Controller
             // Convert 12-hour AM/PM format to 24-hour format for database storage
             if (isset($validated['opening_time']) && $validated['opening_time'] !== '' && $validated['opening_time'] !== null) {
                 try {
-                    $validated['opening_time'] = \Carbon\Carbon::createFromFormat('h A', $validated['opening_time'])->format('H:00:00');
+                    $validated['opening_time'] = \Carbon\Carbon::createFromFormat('g A', $validated['opening_time'])->format('H:00:00');
                 } catch (\Exception $e) {
                     unset($validated['opening_time']);
                 }
@@ -379,7 +379,7 @@ class VendorControllerAPI extends Controller
             
             if (isset($validated['closing_time']) && $validated['closing_time'] !== '' && $validated['closing_time'] !== null) {
                 try {
-                    $validated['closing_time'] = \Carbon\Carbon::createFromFormat('h A', $validated['closing_time'])->format('H:00:00');
+                    $validated['closing_time'] = \Carbon\Carbon::createFromFormat('g A', $validated['closing_time'])->format('H:00:00');
                 } catch (\Exception $e) {
                     unset($validated['closing_time']);
                 }

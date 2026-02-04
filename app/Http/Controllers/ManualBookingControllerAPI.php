@@ -33,8 +33,8 @@ class ManualBookingControllerAPI extends Controller
 
         $validated = $request->validate([
             'date' => 'required|date|after_or_equal:today',
-            'start_time' => 'required|date_format:h A',
-            'end_time' => 'required|date_format:h A',
+            'start_time' => 'required|date_format:g A',
+            'end_time' => 'required|date_format:g A',
             'notes' => 'nullable|min:0|max:255|string',
             'customer_name' => 'required|string|max:255',
             'customer_phone' => 'required|string|max:15',
@@ -55,8 +55,8 @@ class ManualBookingControllerAPI extends Controller
 
         // Convert AM/PM format to 24-hour format for comparison and storage
         try {
-            $startTime24 = \Carbon\Carbon::createFromFormat('h A', $validated['start_time'])->format('H:00:00');
-            $endTime24 = \Carbon\Carbon::createFromFormat('h A', $validated['end_time'])->format('H:00:00');
+            $startTime24 = \Carbon\Carbon::createFromFormat('g A', $validated['start_time'])->format('H:00:00');
+            $endTime24 = \Carbon\Carbon::createFromFormat('g A', $validated['end_time'])->format('H:00:00');
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
