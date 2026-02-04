@@ -50,17 +50,6 @@ class CourtControllerAPI extends Controller
                 ->orderBy('start_time', 'asc')
                 ->get(['start_time', 'end_time', 'customer_name']);
 
-            // Calculate available time slots (assuming 12-hour operation: 8 AM to 8 PM)
-            $availableSlots = [];
-            try {
-                $availableSlots = $this->getAvailableSlots($todayBookings ?? []);
-            } catch (Throwable $e) {
-                Log::warning('showCourtDetail: slot calculation failed', [
-                    'court_id' => $court->id,
-                    'error' => $e->getMessage()
-                ]);
-            }
-
             $courtDetail = [
                 'id' => $court->id,
                 'court_name' => $court->court_name,
@@ -77,10 +66,6 @@ class CourtControllerAPI extends Controller
                     'email' => $court->vendor->email,
                 ] : null,
                 'today_bookings' => $todayBookings,
-                'available_slots' => $availableSlots,
-                'total_slots' => 12,
-                'booked_slots' => $todayBookings ? count($todayBookings) : 0,
-                'available_slots_count' => $todayBookings ? 12 - count($todayBookings) : 12,
             ];
 
             return response()->json([
@@ -107,40 +92,5 @@ class CourtControllerAPI extends Controller
 
             return response()->json($response, 500);
         }
-    }
-
-    /**
-     * Helper function to calculate available time slots
-     */
-    private function getAvailableSlots($bookings)
-    {
-        // Operating hours: 8 AM to 8 PM (12 slots of 1 hour each)
-        $slots = [];
-        for ($hour = 8; $hour < 20; $hour++) {
-            $slotStart = str_pad($hour, 2, '0', 0) . ':00:00';
-            $slotEnd = str_pad($hour + 1, 2, '0', 0) . ':00:00';
-
-            $isBooked = false;
-            foreach ($bookings as $booking) {
-                $startTime = $booking->start_time instanceof \DateTimeInterface
-                    ? $booking->start_time->format('H:i:s')
-                    : (string) $booking->start_time;
-                $endTime = $booking->end_time instanceof \DateTimeInterface
-                    ? $booking->end_time->format('H:i:s')
-                    : (string) $booking->end_time;
-
-                if ($startTime <= $slotStart && $slotEnd <= $endTime) {
-                    $isBooked = true;
-                    break;
-                }
-            }
-
-            $slots[] = [
-                'start_time' => $slotStart,
-                'end_time' => $slotEnd,
-                'is_available' => !$isBooked,
-            ];
-        }
-        return $slots;
     }
 }
