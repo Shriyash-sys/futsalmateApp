@@ -114,7 +114,14 @@ class CourtControllerAPI extends Controller
 
             $isBooked = false;
             foreach ($bookings as $booking) {
-                if ($booking->start_time <= $slotStart && $slotEnd <= $booking->end_time) {
+                $startTime = $booking->start_time instanceof \DateTimeInterface
+                    ? $booking->start_time->format('H:i:s')
+                    : (string) $booking->start_time;
+                $endTime = $booking->end_time instanceof \DateTimeInterface
+                    ? $booking->end_time->format('H:i:s')
+                    : (string) $booking->end_time;
+
+                if ($startTime <= $slotStart && $slotEnd <= $endTime) {
                     $isBooked = true;
                     break;
                 }
