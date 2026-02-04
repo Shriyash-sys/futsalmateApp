@@ -87,6 +87,7 @@ Route::middleware(['auth:sanctum', 'vendor'])->post('/vendor/manual-booking', [M
 
 // Vendor booking approval endpoints
 Route::middleware(['auth:sanctum', 'vendor'])->controller(VendorBookingsControllerAPI::class)->group(function () {
+    Route::get('/vendor/bookings', 'vendorCourtBookings');
     Route::post('/vendor/bookings/{id}/approve', 'vendorApproveBooking');
     Route::post('/vendor/bookings/{id}/reject', 'vendorRejectBooking');
 });
