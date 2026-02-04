@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Throwable;
+use App\Models\Book;
 use App\Models\Court;
 use App\Models\Vendor;
 use Illuminate\Http\Request;
@@ -43,7 +44,7 @@ class CourtControllerAPI extends Controller
             }
 
             // Get today's bookings to show availability
-            $todayBookings = $court->books()
+            $todayBookings = Book::where('court_id', $court->id)
                 ->where('date', now()->toDateString())
                 ->where('status', 'Confirmed')
                 ->orderBy('start_time', 'asc')
