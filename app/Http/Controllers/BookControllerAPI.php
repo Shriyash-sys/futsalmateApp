@@ -77,6 +77,22 @@ class BookControllerAPI extends Controller
             ], 400);
         }
 
+        $hasConflict = Book::where('court_id', $validated['court_id'])
+            ->where('date', $validated['date'])
+            ->whereNotIn('status', ['Cancelled', 'Rejected'])
+            ->where(function ($query) use ($validated) {
+                $query->where('start_time', '<', $validated['end_time'])
+                    ->where('end_time', '>', $validated['start_time']);
+            })
+            ->exists();
+
+        if ($hasConflict) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'This time slot is already booked for the selected date.'
+            ], 409);
+        }
+
         $transaction_uuid = Str::uuid()->toString();
 
         $booking = Book::create([
