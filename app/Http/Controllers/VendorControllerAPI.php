@@ -158,8 +158,8 @@ class VendorControllerAPI extends Controller
             'facilities.*' => 'string|max:100',
             'description' => 'nullable|string|max:1000',
             'status' => 'nullable|in:active,inactive',
-            'opening_time' => 'nullable|integer|between:0,23',
-            'closing_time' => 'nullable|integer|between:0,23',
+            'opening_time' => 'nullable|date_format:h:i A',
+            'closing_time' => 'nullable|date_format:h:i A',
             'latitude' => 'nullable|numeric|between:-90,90',
             'longitude' => 'nullable|numeric|between:-180,180'
         ]);
@@ -241,8 +241,8 @@ class VendorControllerAPI extends Controller
             'facilities.*' => 'string|max:100',
             'description' => 'nullable|string|max:1000',
             'status' => 'nullable|in:active,inactive',
-            'opening_time' => 'nullable|integer|between:0,23',
-            'closing_time' => 'nullable|integer|between:0,23',
+            'opening_time' => 'nullable|date_format:h:i A',
+            'closing_time' => 'nullable|date_format:h:i A',
             'latitude' => 'nullable|numeric|between:-90,90',
             'longitude' => 'nullable|numeric|between:-180,180'
         ]);
