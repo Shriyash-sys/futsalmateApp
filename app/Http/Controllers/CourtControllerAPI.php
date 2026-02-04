@@ -85,10 +85,19 @@ class CourtControllerAPI extends Controller
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
-            return response()->json([
+            $response = [
                 'status' => 'error',
                 'message' => 'Failed to fetch court details'
-            ], 500);
+            ];
+
+            if (config('app.debug')) {
+                $response['debug'] = [
+                    'error' => $e->getMessage(),
+                    'exception' => get_class($e),
+                ];
+            }
+
+            return response()->json($response, 500);
         }
     }
 
