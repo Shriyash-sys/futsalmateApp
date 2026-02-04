@@ -145,9 +145,6 @@ class VendorControllerAPI extends Controller
         }
     }
 
-    /**
-     * Vendor: add a court
-     */
     public function vendorAddCourt(Request $request)
     {
         $validated = $request->validate([
@@ -161,6 +158,8 @@ class VendorControllerAPI extends Controller
             'facilities.*' => 'string|max:100',
             'description' => 'nullable|string|max:1000',
             'status' => 'nullable|in:active,inactive',
+            'opening_time' => 'nullable|integer|between:0,23',
+            'closing_time' => 'nullable|integer|between:0,23',
             'latitude' => 'nullable|numeric|between:-90,90',
             'longitude' => 'nullable|numeric|between:-180,180'
         ]);
@@ -203,6 +202,8 @@ class VendorControllerAPI extends Controller
                 'facilities' => $validated['facilities'] ?? null,
                 'description' => $validated['description'] ?? null,
                 'status' => $validated['status'] ?? 'inactive',
+                'opening_time' => $validated['opening_time'] ?? null,
+                'closing_time' => $validated['closing_time'] ?? null,
                 'latitude' => isset($validated['latitude']) ? $validated['latitude'] : null,
                 'longitude' => isset($validated['longitude']) ? $validated['longitude'] : null,
                 'vendor_id' => $actor->id
@@ -240,6 +241,8 @@ class VendorControllerAPI extends Controller
             'facilities.*' => 'string|max:100',
             'description' => 'nullable|string|max:1000',
             'status' => 'nullable|in:active,inactive',
+            'opening_time' => 'nullable|integer|between:0,23',
+            'closing_time' => 'nullable|integer|between:0,23',
             'latitude' => 'nullable|numeric|between:-90,90',
             'longitude' => 'nullable|numeric|between:-180,180'
         ]);
