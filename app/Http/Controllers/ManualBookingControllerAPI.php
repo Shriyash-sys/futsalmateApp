@@ -33,8 +33,8 @@ class ManualBookingControllerAPI extends Controller
 
         $validated = $request->validate([
             'date' => 'required|date|after_or_equal:today',
-            'start_time' => 'required|string|max:255',
-            'end_time' => 'required|string|max:255',
+            'start_time' => 'required|date_format:h:i A',
+            'end_time' => 'required|date_format:h:i A',
             'notes' => 'nullable|min:0|max:255|string',
             'customer_name' => 'required|string|max:255',
             'customer_phone' => 'required|string|max:15',
@@ -53,16 +53,29 @@ class ManualBookingControllerAPI extends Controller
             ], 404);
         }
 
-        // Check if booking times are within court's operating hours
-        if ($validated['start_time'] < $court->opening_time || $validated['end_time'] > $court->closing_time) {
+        // Convert AM/PM format to 24-hour format for comparison and storage
+        try {
+            $startTime24 = \Carbon\Carbon::createFromFormat('h:i A', $validated['start_time'])->format('H:i:s');
+            $endTime24 = \Carbon\Carbon::createFromFormat('h:i A', $validated['end_time'])->format('H:i:s');
+        } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
-                'message' => "Booking time must be between court's operating hours ({$court->opening_time} - {$court->closing_time})."
+                'message' => 'Invalid time format. Please use format like "05:00 AM".'
             ], 422);
         }
 
+        // Check if booking times are within court's operating hours (if set)
+        if ($court->opening_time && $court->closing_time) {
+            if ($startTime24 < $court->opening_time || $endTime24 > $court->closing_time) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => "Booking time must be between court's operating hours ({$court->opening_time} - {$court->closing_time})."
+                ], 422);
+            }
+        }
+
         // Check if start_time is before end_time
-        if ($validated['start_time'] >= $validated['end_time']) {
+        if ($startTime24 >= $endTime24) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'Start time must be before end time.'
@@ -74,12 +87,12 @@ class ManualBookingControllerAPI extends Controller
             ->where('date', $validated['date'])
             ->where('status', '!=', 'Cancelled')
             ->where('status', '!=', 'Rejected')
-            ->where(function ($query) use ($validated) {
-                $query->whereBetween('start_time', [$validated['start_time'], $validated['end_time']])
-                    ->orWhereBetween('end_time', [$validated['start_time'], $validated['end_time']])
-                    ->orWhere(function ($q) use ($validated) {
-                        $q->where('start_time', '<=', $validated['start_time'])
-                            ->where('end_time', '>=', $validated['end_time']);
+            ->where(function ($query) use ($startTime24, $endTime24) {
+                $query->whereBetween('start_time', [$startTime24, $endTime24])
+                    ->orWhereBetween('end_time', [$startTime24, $endTime24])
+                    ->orWhere(function ($q) use ($startTime24, $endTime24) {
+                        $q->where('start_time', '<=', $startTime24)
+                            ->where('end_time', '>=', $endTime24);
                     });
             })
             ->exists();
@@ -98,8 +111,8 @@ class ManualBookingControllerAPI extends Controller
         $booking = Book::create([
             'transaction_uuid' => $transaction_uuid,
             'date' => $validated['date'],
-            'start_time' => $validated['start_time'],
-            'end_time' => $validated['end_time'],
+            'start_time' => $startTime24,
+            'end_time' => $endTime24,
             'notes' => $validated['notes'] ?? null,
             'customer_name' => $validated['customer_name'],
             'customer_phone' => $validated['customer_phone'],
