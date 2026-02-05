@@ -42,7 +42,7 @@ return [
     'esewa' => [
         'merchant_code' => env('ESEWA_MERCHANT_CODE', 'EPAYTEST'),
         'secret_key' => env('ESEWA_SECRET_KEY', '8gBm/:&EnhH.1/q'),
-        'payment_url' => env('ESEWA_PAYMENT_URL', 'https://rc-epay.esewa.com.np/api/epay/main'),
+        'payment_url' => env('ESEWA_PAYMENT_URL', 'https://rc-epay.esewa.com.np/api/epay/transaction-status'),
         'environment' => env('ESEWA_ENVIRONMENT', 'test'),
     ],
 
