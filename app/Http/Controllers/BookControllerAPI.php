@@ -377,14 +377,6 @@ class BookControllerAPI extends Controller
             ], 404);
         }
 
-        // Check if the booking belongs to the authenticated user
-        if ((int) $booking->user_id !== (int) $user->id) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Unauthorized. This booking does not belong to you.'
-            ], 403);
-        }
-
         return response()->json([
             'status' => 'success',
             'booking' => $booking
@@ -492,6 +484,7 @@ class BookControllerAPI extends Controller
         $now = Carbon::now();
 
         $bookings = Book::with('court')
+            ->whereNotNull('user_id')
             ->where('user_id', $user->id)
             ->whereNotIn('status', ['Cancelled', 'Rejected'])
             ->where(function ($query) use ($now) {
@@ -527,6 +520,7 @@ class BookControllerAPI extends Controller
         $now = Carbon::now();
 
         $bookings = Book::with('court')
+            ->whereNotNull('user_id')
             ->where('user_id', $user->id)
             ->where(function ($query) use ($now) {
                 $query->where('date', '<', $now->toDateString())
@@ -558,16 +552,13 @@ class BookControllerAPI extends Controller
             ], 401);
         }
 
-        $booking = Book::with('court')->find($id);
-        if (!$booking) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Booking not found.'
-            ], 404);
-        }
+        $booking = Book::with('court')
+            ->whereNotNull('user_id')
+            ->where('user_id', $user->id)
+            ->where('id', $id)
+            ->first();
 
-        // Check if the booking belongs to the authenticated user
-        if ($booking->user_id !== $user->id) {
+        if (!$booking) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'Unauthorized. This booking does not belong to you.'
