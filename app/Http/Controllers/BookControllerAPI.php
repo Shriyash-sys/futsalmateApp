@@ -544,4 +544,39 @@ class BookControllerAPI extends Controller
             'past_bookings' => $bookings
         ], 200);
     }
+
+    /**
+     * View booking details by booking ID
+     */
+    public function viewBookingById(Request $request, $id)
+    {
+        $user = $request->user();
+        if (!$user) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Unauthenticated.'
+            ], 401);
+        }
+
+        $booking = Book::with('court')->find($id);
+        if (!$booking) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Booking not found.'
+            ], 404);
+        }
+
+        // Check if the booking belongs to the authenticated user
+        if ($booking->user_id !== $user->id) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Unauthorized. This booking does not belong to you.'
+            ], 403);
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'booking' => $booking
+        ], 200);
+    }
 }
