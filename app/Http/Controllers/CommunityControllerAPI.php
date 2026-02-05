@@ -214,7 +214,7 @@ class CommunityControllerAPI extends Controller
 		Log::info('getAvailableCourts called');
 
 		try {
-			$courts = Court::all(['id', 'name', 'location']);
+			$courts = Court::query()->select(['id', 'court_name as name', 'location'])->get();
 			return response()->json([
 				'status' => 'success',
 				'courts' => $courts,
