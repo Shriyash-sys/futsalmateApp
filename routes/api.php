@@ -58,6 +58,7 @@ Route::middleware(['auth:sanctum', 'customer'])->controller(CommunityControllerA
     Route::get('/community/user-communities', 'showTeams');
     Route::delete('/community/delete-team/{id}', 'deleteTeam');
     Route::match(['put', 'patch'], '/community/edit-team/{id}', 'editTeam');
+    Route::get('/community/available-courts', 'getAvailableCourts');
 });
 
 // User profile
