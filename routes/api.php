@@ -49,6 +49,7 @@ Route::middleware(['auth:sanctum', 'customer'])->controller(BookControllerAPI::c
     Route::get('/book/user-bookings/{id}', 'viewBooking');
     Route::get('/book/upcoming-bookings', 'upcomingBookings');
     Route::get('/book/past-bookings', 'pastBookings');
+    Route::get('/book/booking-detail/{id}', 'viewBookingById');
 });
 
 // Community (team) registration
