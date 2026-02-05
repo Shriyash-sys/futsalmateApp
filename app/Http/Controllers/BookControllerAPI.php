@@ -291,7 +291,7 @@ class BookControllerAPI extends Controller
         }
 
         // Check if the booking belongs to the authenticated user
-        if ($booking->user_id !== $user->id) {
+        if ((int) $booking->user_id !== (int) $user->id) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'Unauthorized. This booking does not belong to you.'
@@ -378,7 +378,7 @@ class BookControllerAPI extends Controller
         }
 
         // Check if the booking belongs to the authenticated user
-        if ($booking->user_id !== $user->id) {
+        if ((int) $booking->user_id !== (int) $user->id) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'Unauthorized. This booking does not belong to you.'
@@ -463,7 +463,7 @@ class BookControllerAPI extends Controller
         }
 
         // Check if the booking belongs to the authenticated user
-        if ($booking->user_id !== $user->id) {
+        if ((int) $booking->user_id !== (int) $user->id) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'Unauthorized. This booking does not belong to you.'
