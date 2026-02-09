@@ -9,6 +9,7 @@ use App\Http\Controllers\SignupControllerAPI;
 use App\Http\Controllers\VendorControllerAPI;
 use App\Http\Controllers\VendorAuthController;
 use App\Http\Controllers\CommunityControllerAPI;
+use App\Http\Controllers\UserProfileControllerAPI;
 use App\Http\Controllers\ManualBookingControllerAPI;
 use App\Http\Controllers\EmailVerificationController;
 use App\Http\Controllers\VendorBookingsControllerAPI;
