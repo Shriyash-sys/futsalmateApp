@@ -9,6 +9,9 @@ use App\Models\Vendor;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use App\Http\Controllers\Controller;
+use Kreait\Firebase\Contract\Messaging;
+use Kreait\Firebase\Messaging\CloudMessage;
+use Kreait\Firebase\Messaging\Notification;
 
 class VendorBookingsControllerAPI extends Controller
 {
@@ -66,7 +69,7 @@ class VendorBookingsControllerAPI extends Controller
             ], 401);
         }
 
-        $booking = Book::with('court')->find($id);
+        $booking = Book::with(['court', 'user'])->find($id);
         if (!$booking) {
             return response()->json([
                 'status' => 'error',
@@ -98,6 +101,8 @@ class VendorBookingsControllerAPI extends Controller
         $booking->status = 'Confirmed';
         $booking->save();
 
+        $this->notifyUserBookingStatus($booking, 'approved');
+
         return response()->json([
             'status' => 'success',
             'message' => 'Booking approved.',
@@ -118,7 +123,7 @@ class VendorBookingsControllerAPI extends Controller
             ], 401);
         }
 
-        $booking = Book::with('court')->find($id);
+        $booking = Book::with(['court', 'user'])->find($id);
         if (!$booking) {
             return response()->json([
                 'status' => 'error',
@@ -143,12 +148,50 @@ class VendorBookingsControllerAPI extends Controller
         $booking->status = 'Rejected';
         $booking->save();
 
-        // Optionally: handle refund for paid booking here
+        $this->notifyUserBookingStatus($booking, 'rejected');
 
         return response()->json([
             'status' => 'success',
             'message' => 'Booking rejected.',
             'booking' => $booking
         ], 200);
+    }
+
+    /**
+     * Send FCM notification to the user about their booking status (approved or rejected).
+     */
+    protected function notifyUserBookingStatus(Book $booking, string $status): void
+    {
+        $user = $booking->user;
+        if (!$user || !$user->fcm_token) {
+            return;
+        }
+
+        $courtName = $booking->court ? $booking->court->court_name : 'the court';
+        $date = $booking->date;
+        $time = $booking->start_time;
+
+        if ($status === 'approved') {
+            $title = 'Booking Confirmed';
+            $body = "Your booking at {$courtName} on {$date} at {$time} has been confirmed.";
+        } else {
+            $title = 'Booking Rejected';
+            $body = "Your booking at {$courtName} on {$date} at {$time} has been rejected by the venue.";
+        }
+
+        try {
+            /** @var Messaging $messaging */
+            $messaging = app(Messaging::class);
+            $message = CloudMessage::new()
+                ->withNotification(Notification::create($title, $body));
+            $messaging->send($message->withChangedTarget('token', $user->fcm_token));
+        } catch (Throwable $e) {
+            Log::warning('Failed to send booking status notification to user', [
+                'booking_id' => $booking->id,
+                'user_id' => $user->id,
+                'status' => $status,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 }
