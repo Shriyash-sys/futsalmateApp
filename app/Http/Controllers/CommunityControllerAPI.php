@@ -68,11 +68,11 @@ class CommunityControllerAPI extends Controller
 	public function editTeam(Request $request, $communityId)
 	{
 		$validated = $request->validate([
-			'full_name' => 'nullable|string|max:255',
-			'location' => 'nullable|string|max:255',
+			'team_name' => 'nullable|string|max:255',
+			'preferred_courts' => 'nullable|string|max:255',
 			'phone' => 'nullable|string|max:50',
-			'members' => 'nullable|integer|min:0',
 			'description' => 'nullable|string|max:1000',
+			'preferred_days' => 'nullable|string',
 		]);
 
 		$actor = $request->user();
