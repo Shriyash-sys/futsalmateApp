@@ -37,11 +37,15 @@ Route::middleware(['auth:sanctum', 'customer'])->get('/show-court', [CourtContro
 Route::middleware(['auth:sanctum', 'customer'])->get('/court-detail/{courtId}', [CourtControllerAPI::class, 'showCourtDetail']);
 
 
-// Booking endpoints
+// eSewa callback endpoints (do NOT require authentication)
+Route::controller(BookControllerAPI::class)->group(function () {
+    Route::match(['get', 'post'], '/book/esewa/success', 'success');
+    Route::match(['get', 'post'], '/book/esewa/failure', 'failure');
+});
+
+// Booking endpoints (authenticated)
 Route::middleware(['auth:sanctum', 'customer'])->controller(BookControllerAPI::class)->group(function () {
     Route::post('/book', 'bookCourt');
-    Route::get('/book/esewa/success', 'success');
-    Route::get('/book/esewa/failure', 'failure');
     Route::get('/book/booked-times', 'getBookedTimes');
     Route::match(['put', 'patch'], '/edit-booking/{id}', 'editBooking');
     Route::delete('/cancel-booking/{id}', 'cancelBooking');

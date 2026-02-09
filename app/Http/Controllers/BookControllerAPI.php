@@ -160,7 +160,16 @@ class BookControllerAPI extends Controller
      */
     public function success(Request $request)
     {
+        // eSewa sends the response parameters encoded in Base64 in the HTTP body.
+        // Some integrations also send it as a "data" query / form parameter.
+        // To be robust, we try all three in order.
         $encodedData = $request->query('data');
+        if (!$encodedData) {
+            $encodedData = $request->input('data');
+        }
+        if (!$encodedData) {
+            $encodedData = $request->getContent();
+        }
 
         if (!$encodedData) {
             return response()->json([
@@ -169,13 +178,26 @@ class BookControllerAPI extends Controller
             ], 400);
         }
 
-        // Base64 decode
-        $jsonData = base64_decode($encodedData);
+        try {
+            // Base64 decode
+            $jsonData = base64_decode($encodedData, true);
+            if ($jsonData === false) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Unable to decode payment data.'
+                ], 400);
+            }
 
-        // JSON decode to associative array
-        $data = json_decode($jsonData, true);
+            // JSON decode to associative array
+            $data = json_decode($jsonData, true);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to parse payment data.',
+            ], 400);
+        }
 
-        if (!$data) {
+        if (!is_array($data)) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'Invalid payment data format.'
@@ -205,7 +227,7 @@ class BookControllerAPI extends Controller
             }
         }
 
-        if ($data['status'] == "COMPLETE") {
+        if (($data['status'] ?? null) === "COMPLETE") {
             // Mark payment as Paid and auto-confirm booking
             $updated = Book::where('transaction_uuid', $data['transaction_uuid'])
                 ->where('payment_status', '!=', 'Paid')
