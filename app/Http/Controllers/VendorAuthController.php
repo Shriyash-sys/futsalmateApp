@@ -16,7 +16,8 @@ class VendorAuthController extends Controller
     {
         $validated = $request->validate([
             'email' => 'required|email',
-            'password' => 'required|string|min:8'
+            'password' => 'required|string|min:8',
+            'fcm_token' => 'nullable|string',
         ]);
 
         $vendor = Vendor::where('email', $validated['email'])->first();
@@ -26,6 +27,12 @@ class VendorAuthController extends Controller
                 'status' => 'error',
                 'message' => 'The provided credentials do not match our records.'
             ], 401);
+        }
+
+        // Update FCM token if provided
+        if (!empty($validated['fcm_token'] ?? null)) {
+            $vendor->fcm_token = $validated['fcm_token'];
+            $vendor->save();
         }
 
         $token = $vendor->createToken('vendor-token')->plainTextToken;

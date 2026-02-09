@@ -22,7 +22,8 @@ class LoginControllerAPI extends Controller
         $validatedData = $request->validate([
             'email' => 'required|email',
             'password' => 'required|string|min:8',
-            'remember' => 'nullable|boolean'
+            'remember' => 'nullable|boolean',
+            'fcm_token' => 'nullable|string',
         ]);
 
         Log::info('Trying login for email: ' . $validatedData['email']);
@@ -51,6 +52,12 @@ class LoginControllerAPI extends Controller
                     'resend_verification' => route('verification.resend.otp')
                 ]
             ], 403);
+        }
+
+        // Update FCM token if provided
+        if (!empty($validatedData['fcm_token'] ?? null)) {
+            $user->fcm_token = $validatedData['fcm_token'];
+            $user->save();
         }
 
         $token = $user->createToken('auth-token')->plainTextToken;
