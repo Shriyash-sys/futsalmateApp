@@ -286,4 +286,30 @@ class UserProfileControllerAPI extends Controller
             'message' => 'Device token registered.',
         ], 200);
     }
+
+    // ----------------------------------------Delete Device Token (FCM)----------------------------------------
+    public function deleteDeviceToken(Request $request)
+    {
+        $user = $request->user();
+
+        if (!$user || !($user instanceof User)) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Unauthenticated.'
+            ], 401);
+        }
+
+        $validated = $request->validate([
+            'token' => 'required|string',
+        ]);
+
+        DeviceToken::where('user_id', $user->id)
+            ->where('token', $validated['token'])
+            ->delete();
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Device token deleted.',
+        ], 200);
+    }
 }

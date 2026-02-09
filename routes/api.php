@@ -73,6 +73,7 @@ Route::middleware(['auth:sanctum', 'customer'])->controller(UserProfileControlle
     Route::post('/profile/photo', 'addProfilePhoto');
     Route::delete('/profile/photo', 'deleteProfilePhoto');
     Route::post('/device/register-token', 'registerDeviceToken');
+    Route::post('/device/delete-token', 'deleteDeviceToken');
 });
 
 // Logout endpoints (require authentication)
