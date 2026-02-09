@@ -118,9 +118,11 @@ class BookControllerAPI extends Controller
         }
 
         // Prepare eSewa payment data
-        $amount = $booking->price;
-        $tax_amount = 0;
-        $total_amount = $amount + $tax_amount;
+        // IMPORTANT: use the exact same formatted values (2 decimal places)
+        // that will be sent to eSewa, otherwise the signature will be invalid.
+        $amount = number_format((float) $booking->price, 2, '.', '');
+        $tax_amount = number_format(0, 2, '.', '');
+        $total_amount = number_format($amount + $tax_amount, 2, '.', '');
         $product_code = config('services.esewa.merchant_code', 'EPAYTEST');
         $product_service_charge = 0;
         $product_delivery_charge = 0;
