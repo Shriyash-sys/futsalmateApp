@@ -5,7 +5,7 @@ namespace App\Filament\Resources;
 use Filament\Tables;
 use App\Models\Community;
 use Filament\Tables\Table;
-use Filament\Schemas\Schema;
+use Filament\Forms\Form;
 use Filament\Tables\Actions;
 use Filament\Actions\EditAction;
 use Filament\Resources\Resource;
@@ -31,9 +31,9 @@ class CommunityResource extends Resource
 
     protected static ?string $navigationLabel = 'Communities';
 
-    public static function form(Schema $schema): Schema
+    public static function form(Form $form): Form
     {
-        return $schema
+        return $form
             ->schema([
                 TextInput::make('team_name')
                     ->required()
@@ -92,7 +92,7 @@ class CommunityResource extends Resource
                     ->label('Preferred Courts'),
                 
                 TextColumn::make('description')
-                    ->shorten(50)
+                    ->limit(50)
                     ->sortable()
                     ->label('Description'),
 
