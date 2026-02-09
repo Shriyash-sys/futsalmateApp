@@ -30,7 +30,7 @@ Route::post('/email/verify/otp', [EmailVerificationController::class, 'verifyOtp
 Route::post('/email/verify/resend-otp', [EmailVerificationController::class, 'resend'])->name('verification.resend.otp');
 
 // User dashboard
-Route::get('/user-dashboard', [UserProfileControllerAPI::class, 'userDashboard']);
+Route::middleware(['auth:sanctum', 'customer'])->get('/user-dashboard', [UserProfileControllerAPI::class, 'userDashboard']);
 
 //Show available courts for booking
 Route::middleware(['auth:sanctum', 'customer'])->get('/show-court', [CourtControllerAPI::class, 'showBookCourt']);
