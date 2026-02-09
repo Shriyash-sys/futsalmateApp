@@ -311,25 +311,21 @@ class BookControllerAPI extends Controller
             if ($updated) {
                 $booking = Book::where('transaction_uuid', $data['transaction_uuid'])->first();
 
-                return response()->json([
-                    'status' => 'success',
-                    'message' => 'Payment successful and booking confirmed.',
-                    'booking' => $booking,
-                    'payment_data' => $data
-                ], 200);
+                // Return simple HTML page that will be handled by the app's WebView
+                return response()->view('payment-success', [
+                    'booking_id' => $booking->id ?? null
+                ], 200)->header('Content-Type', 'text/html');
             } else {
                 return response()->json([
                     'status' => 'error',
-                    'message' => 'Booking not found or already processed.',
-                    'payment_data' => $data
+                    'message' => 'Booking not found or already processed.'
                 ], 404);
             }
         }
 
         return response()->json([
             'status' => 'error',
-            'message' => 'Payment status is not complete.',
-            'payment_data' => $data
+            'message' => 'Payment status is not complete.'
         ], 400);
     }
 
