@@ -35,7 +35,8 @@ class User extends Authenticatable implements MustVerifyEmail
         'email_otp',
         'email_otp_expires_at',
         'otp_resend_count',
-        'otp_resend_expires_at'
+        'otp_resend_expires_at',
+        'fcm_token',
     ];
 
     /**
@@ -54,11 +55,6 @@ class User extends Authenticatable implements MustVerifyEmail
     public function communities()
     {
         return $this->hasMany(Community::class);
-    }
-
-    public function deviceTokens()
-    {
-        return $this->hasMany(DeviceToken::class);
     }
 
     /**

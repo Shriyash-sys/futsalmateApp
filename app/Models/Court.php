@@ -26,6 +26,11 @@ class Court extends Model
         'closing_time'
     ];
 
+    public function vendor()
+    {
+        return $this->belongsTo(Vendor::class);
+    }
+
     protected $casts = [
         'availability' => 'array',
         'image' => 'string',

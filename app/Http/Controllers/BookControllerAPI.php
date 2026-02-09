@@ -40,7 +40,7 @@ class BookControllerAPI extends Controller
 
     protected function sendRemindersForOffset(Messaging $messaging, int $minutesBefore, string $flag, Carbon $now): void
     {
-        $books = Book::with(['user.deviceTokens', 'court'])
+        $books = Book::with(['user', 'court'])
             ->where('payment_status', 'Paid')
             ->where('status', 'Confirmed')
             ->where($flag, false)
@@ -59,23 +59,26 @@ class BookControllerAPI extends Controller
             }
 
             $user = $booking->user;
-            if (!$user || !$user->deviceTokens || $user->deviceTokens->isEmpty()) {
-                continue;
-            }
-
-            $courtName = optional($booking->court)->court_name ?? 'your match';
+            $court = $booking->court;
+            $courtName = optional($court)->court_name ?? 'your match';
             $title = 'Upcoming Match Reminder';
             $body = "Your match at {$courtName} starts in {$minutesBefore} minutes.";
 
-            foreach ($user->deviceTokens as $deviceToken) {
-                if (!$deviceToken->token) {
-                    continue;
-                }
-
+            // Send to player
+            if ($user && $user->fcm_token) {
                 $message = CloudMessage::new()
                     ->withNotification(Notification::create($title, $body));
+                $messaging->send($message->withChangedTarget('token', $user->fcm_token));
+            }
 
-                $messaging->send($message->withChangedTarget('token', $deviceToken->token));
+            // Optionally also notify vendor that their court has a match starting soon
+            if ($court && $court->vendor && $court->vendor->fcm_token) {
+                $vendorMessage = CloudMessage::new()
+                    ->withNotification(Notification::create(
+                        'Upcoming Booking',
+                        "A booking at {$courtName} starts in {$minutesBefore} minutes."
+                    ));
+                $messaging->send($vendorMessage->withChangedTarget('token', $court->vendor->fcm_token));
             }
 
             $booking->$flag = true;

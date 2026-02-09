@@ -21,7 +21,8 @@ class Vendor extends Authenticatable implements MustVerifyEmail
         'password',
         'phone',
         'address',
-        'owner_name'
+        'owner_name',
+        'fcm_token',
     ];
 
     protected $hidden = [
