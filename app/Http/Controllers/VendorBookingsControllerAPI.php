@@ -184,6 +184,55 @@ class VendorBookingsControllerAPI extends Controller
     }
 
     /**
+     * Vendor updates payment status of a booking (Pending, Paid, Unpaid).
+     */
+    public function updatePaymentStatus(Request $request, $id)
+    {
+        $vendor = $request->user();
+        if (!$vendor) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Unauthenticated.'
+            ], 401);
+        }
+
+        $booking = Book::with(['court', 'user'])->find($id);
+        if (!$booking) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Booking not found.'
+            ], 404);
+        }
+
+        if (!$booking->court) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Court information not found for this booking.'
+            ], 404);
+        }
+
+        if ((int) $booking->court->vendor_id !== (int) $vendor->id) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Unauthorized. This booking is not for your court.'
+            ], 403);
+        }
+
+        $validated = $request->validate([
+            'payment_status' => 'required|string|in:Pending,Paid,Unpaid',
+        ]);
+
+        $booking->payment_status = $validated['payment_status'];
+        $booking->save();
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Payment status updated.',
+            'booking' => $booking
+        ], 200);
+    }
+
+    /**
      * Send FCM notification to the user about their booking status (approved or rejected).
      */
     protected function notifyUserBookingStatus(Book $booking, string $status): void
