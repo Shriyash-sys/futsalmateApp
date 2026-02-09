@@ -9,13 +9,15 @@ return new class extends Migration {
     {
         Schema::table('users', function (Blueprint $table) {
             if (!Schema::hasColumn('users', 'fcm_token')) {
-                $table->string('fcm_token')->nullable()->after('remember');
+                // Add at the end to avoid referencing non-existent columns
+                $table->string('fcm_token')->nullable();
             }
         });
 
         Schema::table('vendors', function (Blueprint $table) {
             if (!Schema::hasColumn('vendors', 'fcm_token')) {
-                $table->string('fcm_token')->nullable()->after('owner_name');
+                // Add at the end to avoid referencing non-existent columns
+                $table->string('fcm_token')->nullable();
             }
         });
     }
