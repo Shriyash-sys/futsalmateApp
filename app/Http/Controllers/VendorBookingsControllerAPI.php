@@ -77,7 +77,20 @@ class VendorBookingsControllerAPI extends Controller
             ], 404);
         }
 
-        if ($booking->court->vendor_id !== $vendor->id) {
+        if (!$booking->court) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Court information not found for this booking.'
+            ], 404);
+        }
+
+        if ((int) $booking->court->vendor_id !== (int) $vendor->id) {
+            Log::warning('Vendor approval authorization failed', [
+                'vendor_id' => $vendor->id,
+                'court_vendor_id' => $booking->court->vendor_id,
+                'booking_id' => $booking->id,
+                'court_id' => $booking->court->id,
+            ]);
             return response()->json([
                 'status' => 'error',
                 'message' => 'Unauthorized. This booking is not for your court.'
@@ -131,7 +144,20 @@ class VendorBookingsControllerAPI extends Controller
             ], 404);
         }
 
-        if ($booking->court->vendor_id !== $vendor->id) {
+        if (!$booking->court) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Court information not found for this booking.'
+            ], 404);
+        }
+
+        if ((int) $booking->court->vendor_id !== (int) $vendor->id) {
+            Log::warning('Vendor rejection authorization failed', [
+                'vendor_id' => $vendor->id,
+                'court_vendor_id' => $booking->court->vendor_id,
+                'booking_id' => $booking->id,
+                'court_id' => $booking->court->id,
+            ]);
             return response()->json([
                 'status' => 'error',
                 'message' => 'Unauthorized. This booking is not for your court.'
