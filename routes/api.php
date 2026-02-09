@@ -13,6 +13,7 @@ use App\Http\Controllers\UserProfileControllerAPI;
 use App\Http\Controllers\ManualBookingControllerAPI;
 use App\Http\Controllers\EmailVerificationController;
 use App\Http\Controllers\VendorBookingsControllerAPI;
+use App\Http\Controllers\UserProfileControllerAPI;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -41,6 +42,8 @@ Route::middleware(['auth:sanctum', 'customer'])->get('/court-detail/{courtId}', 
 Route::controller(BookControllerAPI::class)->group(function () {
     Route::match(['get', 'post'], '/book/esewa/success', 'success');
     Route::match(['get', 'post'], '/book/esewa/failure', 'failure');
+    // booking reminders via cron (uses REMINDER_CRON_KEY)
+    Route::get('/system/send-booking-reminders', 'sendUpcomingReminders');
 });
 
 // Booking endpoints (authenticated)
@@ -71,6 +74,7 @@ Route::middleware(['auth:sanctum', 'customer'])->controller(UserProfileControlle
     Route::match(['put', 'patch'], '/profile', 'editProfile');
     Route::post('/profile/photo', 'addProfilePhoto');
     Route::delete('/profile/photo', 'deleteProfilePhoto');
+    Route::post('/device/register-token', 'registerDeviceToken');
 });
 
 // Logout endpoints (require authentication)

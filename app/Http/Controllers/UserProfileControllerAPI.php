@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Book;
 use App\Models\User;
+use App\Models\DeviceToken;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use App\Notifications\UserEmailOtp;
@@ -252,6 +253,37 @@ class UserProfileControllerAPI extends Controller
         return response()->json([
             'status' => 'success',
             'message' => 'Password changed successfully.'
+        ], 200);
+    }
+
+    // ----------------------------------------Register Device Token (FCM)----------------------------------------
+    public function registerDeviceToken(Request $request)
+    {
+        $user = $request->user();
+
+        if (!$user || !($user instanceof User)) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Unauthenticated.'
+            ], 401);
+        }
+
+        $validated = $request->validate([
+            'token' => 'required|string',
+            'platform' => 'nullable|string|max:50',
+        ]);
+
+        DeviceToken::updateOrCreate(
+            ['token' => $validated['token']],
+            [
+                'user_id' => $user->id,
+                'platform' => $validated['platform'] ?? 'android',
+            ]
+        );
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Device token registered.',
         ], 200);
     }
 }

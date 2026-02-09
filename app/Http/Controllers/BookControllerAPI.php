@@ -9,9 +9,80 @@ use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
+use Kreait\Firebase\Contract\Messaging;
+use Kreait\Firebase\Messaging\CloudMessage;
+use Kreait\Firebase\Messaging\Notification;
 
 class BookControllerAPI extends Controller
 {
+    /**
+     * Send upcoming booking reminders (called by cron via HTTP).
+     */
+    public function sendUpcomingReminders(Request $request)
+    {
+        $key = $request->query('key');
+        $expectedKey = config('app.reminder_key', env('REMINDER_CRON_KEY'));
+
+        if (!$expectedKey || $key !== $expectedKey) {
+            return response()->json(['status' => 'error', 'message' => 'Unauthorized'], 401);
+        }
+
+        /** @var Messaging $messaging */
+        $messaging = app(Messaging::class);
+
+        $now = Carbon::now();
+
+        $this->sendRemindersForOffset($messaging, 30, 'reminder_30_sent', $now);
+        $this->sendRemindersForOffset($messaging, 10, 'reminder_10_sent', $now);
+
+        return response()->json(['status' => 'success'], 200);
+    }
+
+    protected function sendRemindersForOffset(Messaging $messaging, int $minutesBefore, string $flag, Carbon $now): void
+    {
+        $books = Book::with(['user.deviceTokens', 'court'])
+            ->where('payment_status', 'Paid')
+            ->where('status', 'Confirmed')
+            ->where($flag, false)
+            ->get();
+
+        foreach ($books as $booking) {
+            $start = Carbon::parse($booking->date . ' ' . $booking->start_time);
+            if ($start->lessThanOrEqualTo($now)) {
+                continue;
+            }
+
+            $minutesToStart = $now->diffInMinutes($start, false);
+
+            if ($minutesToStart < $minutesBefore - 1 || $minutesToStart > $minutesBefore + 1) {
+                continue;
+            }
+
+            $user = $booking->user;
+            if (!$user || !$user->deviceTokens || $user->deviceTokens->isEmpty()) {
+                continue;
+            }
+
+            $courtName = optional($booking->court)->court_name ?? 'your match';
+            $title = 'Upcoming Match Reminder';
+            $body = "Your match at {$courtName} starts in {$minutesBefore} minutes.";
+
+            foreach ($user->deviceTokens as $deviceToken) {
+                if (!$deviceToken->token) {
+                    continue;
+                }
+
+                $message = CloudMessage::new()
+                    ->withNotification(Notification::create($title, $body));
+
+                $messaging->send($message->withChangedTarget('token', $deviceToken->token));
+            }
+
+            $booking->$flag = true;
+            $booking->save();
+        }
+    }
+
     /**
      * Book a court
      */

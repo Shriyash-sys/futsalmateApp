@@ -22,6 +22,8 @@ class Book extends Model
         'transaction_uuid',
         'user_id',
         'court_id',
+        'reminder_30_sent',
+        'reminder_10_sent',
     ];
 
     public function user()
