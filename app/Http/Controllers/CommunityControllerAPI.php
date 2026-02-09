@@ -97,7 +97,7 @@ class CommunityControllerAPI extends Controller
 				], 404);
 			}
 
-			if ($community->user_id !== $actor->id) {
+			if ((int) $community->user_id !== (int) $actor->id) {
 				Log::warning('editTeam: unauthorized access', ['actor' => $actor->id, 'community_user' => $community->user_id]);
 				return response()->json([
 					'status' => 'error',
@@ -181,7 +181,7 @@ class CommunityControllerAPI extends Controller
 				], 404);
 			}
 
-			if ($community->user_id !== $actor->id) {
+			if ((int) $community->user_id !== (int) $actor->id) {
 				Log::warning('deleteTeam: unauthorized access', ['actor' => $actor->id, 'community_user' => $community->user_id]);
 				return response()->json([
 					'status' => 'error',
