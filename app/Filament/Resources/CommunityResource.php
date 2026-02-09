@@ -62,7 +62,7 @@ class CommunityResource extends Resource
                     ->label('Preferred Days'),
 
                 Select::make('user_id')
-                    ->relationship('user', 'name')
+                    ->relationship('user', 'full_name')
                     ->required()
                     ->label('Owner'),
             ]);
@@ -77,7 +77,7 @@ class CommunityResource extends Resource
                     ->sortable()
                     ->label('Team Name'),
 
-                TextColumn::make('user.name')
+                TextColumn::make('user.full_name')
                     ->searchable()
                     ->sortable()
                     ->label('User'),
