@@ -169,6 +169,7 @@ class BookControllerAPI extends Controller
 
         $transaction_uuid = Str::uuid()->toString();
 
+        // All bookings start as Pending. Cash: vendor must approve/reject. eSewa: auto-confirm on payment success.
         $booking = Book::create([
             'transaction_uuid' => $transaction_uuid,
             'date' => $validated['date'],
@@ -184,6 +185,7 @@ class BookControllerAPI extends Controller
         ]);
 
         if ($validated['payment'] === 'Cash') {
+            // Cash: leave payment_status and status as Pending until vendor approves or rejects.
             return response()->json([
                 'status' => 'success',
                 'message' => 'Court booked successfully. Please pay in cash at the venue.',
@@ -302,7 +304,7 @@ class BookControllerAPI extends Controller
         }
 
         if (($data['status'] ?? null) === "COMPLETE") {
-            // Mark payment as Paid and auto-confirm booking
+            // eSewa success: set payment_status = Paid and status = Confirmed (no vendor approval needed).
             $updated = Book::where('transaction_uuid', $data['transaction_uuid'])
                 ->where('payment_status', '!=', 'Paid')
                 ->where('status', '!=', 'Cancelled')

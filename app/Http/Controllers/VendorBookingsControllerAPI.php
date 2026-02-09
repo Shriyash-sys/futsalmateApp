@@ -57,7 +57,8 @@ class VendorBookingsControllerAPI extends Controller
     }
 
     /**
-     * Vendor approves a booking
+     * Vendor approves a booking (used for Cash: Pending → Confirmed).
+     * eSewa bookings are auto-confirmed on payment; only Pending Cash bookings need approval.
      */
     public function vendorApproveBooking(Request $request, $id)
     {
@@ -124,7 +125,7 @@ class VendorBookingsControllerAPI extends Controller
     }
 
     /**
-     * Vendor rejects a booking
+     * Vendor rejects a booking (used for Cash: Pending → Rejected).
      */
     public function vendorRejectBooking(Request $request, $id)
     {
