@@ -62,6 +62,7 @@ Route::middleware(['auth:sanctum', 'customer'])->controller(BookControllerAPI::c
 Route::middleware(['auth:sanctum', 'customer'])->controller(CommunityControllerAPI::class)->group(function () {
     Route::post('/community/register-team', 'registerTeam');
     Route::get('/community/user-communities', 'showTeams');
+    Route::get('/community/other-teams', 'showOtherTeams');
     Route::delete('/community/delete-team/{id}', 'deleteTeam');
     Route::match(['put', 'patch'], '/community/edit-team/{id}', 'editTeam');
     Route::get('/community/available-courts', 'getAvailableCourts');

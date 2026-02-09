@@ -155,6 +155,37 @@ class CommunityControllerAPI extends Controller
 	}
 
 	/**
+	 * Show all teams (communities) not owned by the logged-in user
+	 */
+	public function showOtherTeams(Request $request)
+	{
+		$actor = $request->user();
+		Log::info('showOtherTeams called', ['actor' => $actor?->id]);
+
+		if (!($actor instanceof User)) {
+			Log::warning('showOtherTeams: unauthorized actor', ['actor' => $actor?->id]);
+			return response()->json([
+				'status' => 'error',
+				'message' => 'This endpoint is only for authenticated users.'
+			], 403);
+		}
+
+		try {
+			$communities = Community::where('user_id', '!=', $actor->id)->get();
+			return response()->json([
+				'status' => 'success',
+				'communities' => $communities,
+			], 200);
+		} catch (Throwable $e) {
+			Log::error('showOtherTeams failed', ['error' => $e->getMessage()]);
+			return response()->json([
+				'status' => 'error',
+				'message' => 'Failed to fetch teams. See server logs for details.'
+			], 500);
+		}
+	}
+
+	/**
 	 * Delete a team (community) owned by the logged-in user
 	 */
 	public function deleteTeam(Request $request, $communityId)
