@@ -5,12 +5,10 @@ namespace App\Filament\Resources;
 use Filament\Tables;
 use App\Models\Community;
 use Filament\Tables\Table;
-use Filament\Forms\Form;
-use Filament\Tables\Actions;
-use Filament\Actions\EditAction;
+use Filament\Schemas\Schema;
 use Filament\Resources\Resource;
-use Filament\Actions\DeleteAction;
-use Filament\Actions\BulkActionGroup;
+use Filament\Tables\Actions\EditAction;
+use Filament\Tables\Actions\BulkActionGroup;
 use Filament\Forms\Components\Select;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Forms\Components\Textarea;
@@ -31,9 +29,9 @@ class CommunityResource extends Resource
 
     protected static ?string $navigationLabel = 'Communities';
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $form
+        return $schema
             ->schema([
                 TextInput::make('team_name')
                     ->required()
@@ -104,9 +102,9 @@ class CommunityResource extends Resource
             ->filters([
                 //
             ])
-            ->recordActions([
+            ->actions([
                 EditAction::make(),
-                DeleteAction::make(),
+                Tables\Actions\DeleteAction::make(),
             ])
             ->bulkActions([
                 BulkActionGroup::make([
