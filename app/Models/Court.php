@@ -26,10 +26,6 @@ class Court extends Model
         'closing_time'
     ];
 
-    public function vendor()
-    {
-        return $this->belongsTo(Vendor::class);
-    }
 
     protected $casts = [
         'availability' => 'array',
@@ -38,10 +34,6 @@ class Court extends Model
         'latitude' => 'float',
         'longitude' => 'float'
     ];
-
-    public function vendor() {
-        return $this->belongsTo(Vendor::class);
-    }
 
     public function books()
     {
