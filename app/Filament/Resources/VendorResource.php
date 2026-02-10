@@ -74,6 +74,10 @@ class VendorResource extends Resource
                 TextColumn::make('email')
                     ->searchable()
                     ->sortable(),
+                TextColumn::make('user_type')
+                    ->badge()
+                    ->color('success')
+                    ->sortable(),
                 TextColumn::make('phone')
                     ->searchable()
                     ->sortable(),

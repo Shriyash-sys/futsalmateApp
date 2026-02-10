@@ -18,6 +18,7 @@ class Vendor extends Authenticatable implements MustVerifyEmail
     protected $fillable = [
         'name',
         'email',
+        'user_type',
         'password',
         'phone',
         'address',
@@ -29,6 +30,17 @@ class Vendor extends Authenticatable implements MustVerifyEmail
         'password',
         'remember_token'
     ];
+
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::creating(function ($vendor) {
+            if (empty($vendor->user_type)) {
+                $vendor->user_type = 'vendor';
+            }
+        });
+    }
 
     public function court()
     {
