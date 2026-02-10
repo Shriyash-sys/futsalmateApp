@@ -117,7 +117,7 @@ class VendorControllerAPI extends Controller
                     'full_name' => $user->full_name,
                     'email' => $user->email,
                     'phone' => $user->phone,
-                    'profile_photo' => $user->profile_photo,
+                    'profile_photo' => $user->profile_photo_url,
                     'email_verified_at' => $user->email_verified_at ? $user->email_verified_at->format('c') : null,
                     'statistics' => [
                         'total_bookings' => $totalBookings,
