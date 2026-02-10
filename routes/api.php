@@ -75,6 +75,7 @@ Route::middleware(['auth:sanctum', 'customer'])->controller(UserProfileControlle
     Route::match(['put', 'patch'], '/profile', 'editProfile');
     Route::post('/profile/photo', 'addProfilePhoto');
     Route::delete('/profile/photo', 'deleteProfilePhoto');
+    Route::post('/profile/change-password', 'changePassword');
 });
 
 // Logout endpoints (require authentication)
