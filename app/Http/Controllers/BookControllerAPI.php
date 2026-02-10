@@ -293,9 +293,6 @@ class BookControllerAPI extends Controller
      */
     public function success(Request $request)
     {
-        // eSewa sends the response parameters encoded in Base64 in the HTTP body.
-        // Some integrations also send it as a "data" query / form parameter.
-        // To be robust, we try all three in order.
         $encodedData = $request->query('data');
         if (!$encodedData) {
             $encodedData = $request->input('data');
@@ -312,7 +309,6 @@ class BookControllerAPI extends Controller
         }
 
         try {
-            // Base64 decode
             $jsonData = base64_decode($encodedData, true);
             if ($jsonData === false) {
                 return response()->json([
@@ -321,7 +317,6 @@ class BookControllerAPI extends Controller
                 ], 400);
             }
 
-            // JSON decode to associative array
             $data = json_decode($jsonData, true);
         } catch (\Throwable $e) {
             return response()->json([
