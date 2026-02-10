@@ -61,6 +61,7 @@ class CourtControllerAPI extends Controller
                 'closing_time' => $court->closing_time,
                 'latitude' => $court->latitude,
                 'longitude' => $court->longitude,
+                'facilities' => $court->facilities,
                 'vendor' => $court->vendor ? [
                     'id' => $court->vendor->id,
                     'name' => $court->vendor->name,
