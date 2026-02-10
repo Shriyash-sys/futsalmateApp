@@ -184,6 +184,9 @@ class BookControllerAPI extends Controller
             'status' => 'Pending',
         ]);
 
+        // Notify vendor that a new booking was created
+        $this->notifyVendorOfNewBooking($booking);
+
         if ($validated['payment'] === 'Cash') {
             // Cash: leave payment_status and status as Pending until vendor approves or rejects.
             return response()->json([
@@ -229,6 +232,43 @@ class BookControllerAPI extends Controller
                 'signature' => $signature
             ]
         ], 201);
+    }
+
+    /**
+     * Send FCM notification to the vendor when a new booking is created.
+     */
+    protected function notifyVendorOfNewBooking(Book $booking): void
+    {
+        try {
+            $booking->loadMissing(['court.vendor', 'user']);
+            $court = $booking->court;
+            $vendor = $court ? $court->vendor : null;
+
+            if (!$vendor || !$vendor->fcm_token) {
+                return;
+            }
+
+            /** @var Messaging $messaging */
+            $messaging = app(Messaging::class);
+
+            $courtName = optional($court)->court_name ?? 'your court';
+            $userName = optional($booking->user)->full_name ?? 'A player';
+
+            $date = $booking->date;
+            $start = $booking->start_time;
+            $end = $booking->end_time;
+            $payment = $booking->payment;
+
+            $title = 'New Booking Request';
+            $body = "{$userName} booked {$courtName} on {$date} {$start}-{$end} ({$payment}).";
+
+            $message = CloudMessage::new()
+                ->withNotification(Notification::create($title, $body));
+
+            $messaging->send($message->withChangedTarget('token', $vendor->fcm_token));
+        } catch (\Throwable $e) {
+            // Fail silently – booking should still succeed even if notification fails.
+        }
     }
 
     /**
