@@ -169,7 +169,7 @@ class BookControllerAPI extends Controller
 
         $transaction_uuid = Str::uuid()->toString();
 
-        // All bookings start as Pending. Cash: vendor must approve/reject. eSewa: auto-confirm on payment success.
+        // All bookings start as Pending.
         $booking = Book::create([
             'transaction_uuid' => $transaction_uuid,
             'date' => $validated['date'],
@@ -188,7 +188,6 @@ class BookControllerAPI extends Controller
         $this->notifyVendorOfNewBooking($booking);
 
         if ($validated['payment'] === 'Cash') {
-            // Cash: leave payment_status and status as Pending until vendor approves or rejects.
             return response()->json([
                 'status' => 'success',
                 'message' => 'Court booked successfully. Please pay in cash at the venue.',
@@ -197,8 +196,6 @@ class BookControllerAPI extends Controller
         }
 
         // Prepare eSewa payment data
-        // IMPORTANT: use the exact same formatted values (2 decimal places)
-        // that will be sent to eSewa, otherwise the signature will be invalid.
         $amount = number_format((float) $booking->price, 2, '.', '');
         $tax_amount = number_format(0, 2, '.', '');
         $total_amount = number_format($amount + $tax_amount, 2, '.', '');
