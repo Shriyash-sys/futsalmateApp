@@ -241,19 +241,7 @@ class BookControllerAPI extends Controller
             $court = $booking->court;
             $vendor = $court ? $court->vendor : null;
 
-            if (!$vendor) {
-                \Log::warning('notifyVendorOfNewBooking: no vendor for court', [
-                    'booking_id' => $booking->id ?? null,
-                    'court_id' => $court->id ?? null,
-                ]);
-                return;
-            }
-
-            if (empty($vendor->fcm_token)) {
-                \Log::warning('notifyVendorOfNewBooking: vendor has no fcm_token', [
-                    'vendor_id' => $vendor->id,
-                    'booking_id' => $booking->id ?? null,
-                ]);
+            if (!$vendor || !$vendor->fcm_token) {
                 return;
             }
 
@@ -275,16 +263,8 @@ class BookControllerAPI extends Controller
                 ->withNotification(Notification::create($title, $body));
 
             $messaging->send($message->withChangedTarget('token', $vendor->fcm_token));
-
-            \Log::info('notifyVendorOfNewBooking: notification sent', [
-                'vendor_id' => $vendor->id,
-                'booking_id' => $booking->id ?? null,
-            ]);
         } catch (\Throwable $e) {
-            \Log::error('notifyVendorOfNewBooking failed', [
-                'booking_id' => $booking->id ?? null,
-                'error' => $e->getMessage(),
-            ]);
+            // Fail silently – booking should still succeed even if notification fails.
         }
     }
 
@@ -293,6 +273,9 @@ class BookControllerAPI extends Controller
      */
     public function success(Request $request)
     {
+        // eSewa sends the response parameters encoded in Base64 in the HTTP body.
+        // Some integrations also send it as a "data" query / form parameter.
+        // To be robust, we try all three in order.
         $encodedData = $request->query('data');
         if (!$encodedData) {
             $encodedData = $request->input('data');
