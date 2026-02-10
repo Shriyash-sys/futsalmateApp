@@ -13,6 +13,7 @@ use App\Http\Controllers\UserProfileControllerAPI;
 use App\Http\Controllers\ManualBookingControllerAPI;
 use App\Http\Controllers\EmailVerificationController;
 use App\Http\Controllers\VendorBookingsControllerAPI;
+use App\Http\Controllers\VendorProfileControllerAPI;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -107,6 +108,12 @@ Route::middleware(['auth:sanctum', 'vendor'])->controller(VendorBookingsControll
 Route::middleware(['auth:sanctum', 'vendor'])->controller(VendorControllerAPI::class)->group(function () {
     Route::get('/vendor/vendor-dashboard', 'vendorDashboard');
     Route::get('/vendor/view-customers', 'viewVendorCustomers');
+});
+
+// Vendor profile
+Route::middleware(['auth:sanctum', 'vendor'])->controller(VendorProfileControllerAPI::class)->group(function () {
+    Route::get('/vendor/profile', 'show');
+    Route::match(['put', 'patch'], '/vendor/profile', 'editProfile');
 });
 
 // Logout endpoints (require authentication)
