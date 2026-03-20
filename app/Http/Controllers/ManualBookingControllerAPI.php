@@ -82,18 +82,14 @@ class ManualBookingControllerAPI extends Controller
             ], 422);
         }
 
-        // Check for time slot conflicts
+        // Check for time slot conflicts (overlap: existing.start < new.end AND existing.end > new.start)
         $conflictingBooking = Book::where('court_id', $validated['court_id'])
             ->where('date', $validated['date'])
             ->where('status', '!=', 'Cancelled')
             ->where('status', '!=', 'Rejected')
             ->where(function ($query) use ($startTime24, $endTime24) {
-                $query->whereBetween('start_time', [$startTime24, $endTime24])
-                    ->orWhereBetween('end_time', [$startTime24, $endTime24])
-                    ->orWhere(function ($q) use ($startTime24, $endTime24) {
-                        $q->where('start_time', '<=', $startTime24)
-                            ->where('end_time', '>=', $endTime24);
-                    });
+                $query->where('start_time', '<', $endTime24)
+                    ->where('end_time', '>', $startTime24);
             })
             ->exists();
 
