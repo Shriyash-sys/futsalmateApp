@@ -477,8 +477,7 @@ class BookControllerAPI extends Controller
 
         $bookings = Book::where('court_id', $validated['court_id'])
             ->where('date', $validated['date'])
-            ->where('status', '!=', 'Rejected')
-            ->where('status', '!=', 'Cancelled')
+            ->whereNotIn('status', ['Rejected', 'Cancelled'])
             ->get(['start_time', 'end_time', 'status']);
 
         return response()->json([

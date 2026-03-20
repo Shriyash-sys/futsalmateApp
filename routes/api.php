@@ -46,10 +46,12 @@ Route::controller(BookControllerAPI::class)->group(function () {
     Route::get('/system/send-booking-reminders', 'sendUpcomingReminders');
 });
 
-// Booking endpoints (authenticated)
+// Booked times (accessible by both customer and vendor)
+Route::middleware(['auth:sanctum'])->get('/book/booked-times', [BookControllerAPI::class, 'getBookedTimes']);
+
+// Booking endpoints (authenticated customer)
 Route::middleware(['auth:sanctum', 'customer'])->controller(BookControllerAPI::class)->group(function () {
     Route::post('/book', 'bookCourt');
-    Route::get('/book/booked-times', 'getBookedTimes');
     Route::match(['put', 'patch'], '/edit-booking/{id}', 'editBooking');
     Route::delete('/cancel-booking/{id}', 'cancelBooking');
     Route::get('/book/booking-confirmation/{id}', 'showBookingConfirmation');
@@ -101,7 +103,6 @@ Route::middleware(['auth:sanctum', 'vendor'])->post('/vendor/manual-booking', [M
 // Vendor booking approval endpoints
 Route::middleware(['auth:sanctum', 'vendor'])->controller(VendorBookingsControllerAPI::class)->group(function () {
     Route::get('/vendor/bookings', 'vendorCourtBookings');
-    Route::get('/vendor/booked-times', 'vendorBookedTimes');
     Route::post('/vendor/bookings/{id}/approve', 'vendorApproveBooking');
     Route::post('/vendor/bookings/{id}/reject', 'vendorRejectBooking');
     Route::match(['put', 'patch'], '/vendor/bookings/{id}/payment-status', 'updatePaymentStatus');
