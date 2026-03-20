@@ -105,6 +105,8 @@ Route::middleware(['auth:sanctum', 'vendor'])->controller(VendorBookingsControll
     Route::get('/vendor/bookings', 'vendorCourtBookings');
     Route::post('/vendor/bookings/{id}/approve', 'vendorApproveBooking');
     Route::post('/vendor/bookings/{id}/reject', 'vendorRejectBooking');
+    Route::delete('/vendor/bookings/{id}/cancel', 'vendorCancelBooking');
+    Route::match(['put', 'patch'], '/vendor/bookings/{id}', 'vendorEditBooking');
     Route::match(['put', 'patch'], '/vendor/bookings/{id}/payment-status', 'updatePaymentStatus');
 });
 

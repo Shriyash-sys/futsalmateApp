@@ -185,6 +185,177 @@ class VendorBookingsControllerAPI extends Controller
     }
 
     /**
+     * Vendor cancels a confirmed booking (sets status to Cancelled).
+     */
+    public function vendorCancelBooking(Request $request, $id)
+    {
+        $vendor = $request->user();
+        if (!$vendor) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Unauthenticated.'
+            ], 401);
+        }
+
+        $booking = Book::with(['court', 'user'])->find($id);
+        if (!$booking) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Booking not found.'
+            ], 404);
+        }
+
+        if (!$booking->court) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Court information not found for this booking.'
+            ], 404);
+        }
+
+        if ((int) $booking->court->vendor_id !== (int) $vendor->id) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Unauthorized. This booking is not for your court.'
+            ], 403);
+        }
+
+        if (!in_array($booking->status, ['Pending', 'Confirmed'])) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Cannot cancel booking with status: ' . $booking->status
+            ], 400);
+        }
+
+        $booking->status = 'Cancelled';
+        $booking->save();
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Booking cancelled.',
+            'booking' => $booking
+        ], 200);
+    }
+
+    /**
+     * Vendor edits a booking (date, time, and optionally customer info for manual bookings).
+     */
+    public function vendorEditBooking(Request $request, $id)
+    {
+        $vendor = $request->user();
+        if (!$vendor) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Unauthenticated.'
+            ], 401);
+        }
+
+        $booking = Book::with(['court', 'user'])->find($id);
+        if (!$booking) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Booking not found.'
+            ], 404);
+        }
+
+        if (!$booking->court) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Court information not found for this booking.'
+            ], 404);
+        }
+
+        if ((int) $booking->court->vendor_id !== (int) $vendor->id) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Unauthorized. This booking is not for your court.'
+            ], 403);
+        }
+
+        if (!in_array($booking->status, ['Pending', 'Confirmed'])) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Cannot edit booking with status: ' . $booking->status
+            ], 400);
+        }
+
+        $rules = [
+            'date' => 'required|date|after_or_equal:today',
+            'start_time' => 'required|date_format:g A',
+            'end_time' => 'required|date_format:g A',
+        ];
+        if ($booking->user_id === null) {
+            $rules['customer_name'] = 'nullable|string|max:255';
+            $rules['customer_phone'] = 'nullable|string|max:15';
+        }
+        $validated = $request->validate($rules);
+
+        $court = $booking->court;
+
+        try {
+            $startTime24 = \Carbon\Carbon::createFromFormat('g A', $validated['start_time'])->format('H:00:00');
+            $endTime24 = \Carbon\Carbon::createFromFormat('g A', $validated['end_time'])->format('H:00:00');
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Invalid time format. Please use format like "5 AM".'
+            ], 422);
+        }
+
+        if ($court->opening_time && $court->closing_time) {
+            if ($startTime24 < $court->opening_time || $endTime24 > $court->closing_time) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => "Booking time must be between court's operating hours ({$court->opening_time} - {$court->closing_time})."
+                ], 422);
+            }
+        }
+
+        if ($startTime24 >= $endTime24) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Start time must be before end time.'
+            ], 422);
+        }
+
+        $conflictingBooking = Book::where('court_id', $booking->court_id)
+            ->where('date', $validated['date'])
+            ->where('id', '!=', $booking->id)
+            ->where('status', '!=', 'Cancelled')
+            ->where('status', '!=', 'Rejected')
+            ->where(function ($query) use ($startTime24, $endTime24) {
+                $query->where('start_time', '<', $endTime24)
+                    ->where('end_time', '>', $startTime24);
+            })
+            ->exists();
+
+        if ($conflictingBooking) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'This time slot is already booked for the selected date.'
+            ], 409);
+        }
+
+        $booking->date = $validated['date'];
+        $booking->start_time = $startTime24;
+        $booking->end_time = $endTime24;
+        if ($booking->user_id === null) {
+            if (!empty($validated['customer_name'] ?? null)) {
+                $booking->customer_name = $validated['customer_name'];
+            }
+            if (!empty($validated['customer_phone'] ?? null)) {
+                $booking->customer_phone = $validated['customer_phone'];
+            }
+        }
+        $booking->save();
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Booking updated successfully.',
+            'booking' => $booking->load('court')
+        ], 200);
+    }
+
+    /**
      * Vendor updates payment status of a booking (Pending, Paid, Unpaid).
      */
     public function updatePaymentStatus(Request $request, $id)
