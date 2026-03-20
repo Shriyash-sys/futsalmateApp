@@ -57,6 +57,35 @@ class VendorBookingsControllerAPI extends Controller
     }
 
     /**
+     * Vendor: get booked times for a court on a date (for manual booking slot validation)
+     */
+    public function vendorBookedTimes(Request $request)
+    {
+        $actor = $request->user();
+        if (!($actor instanceof Vendor)) {
+            return response()->json(['status' => 'error', 'message' => 'Unauthorized.'], 403);
+        }
+        $validated = $request->validate([
+            'court_id' => 'required|exists:courts,id',
+            'date' => 'required|date',
+        ]);
+        $court = Court::where('id', $validated['court_id'])
+            ->where('vendor_id', $actor->id)
+            ->first();
+        if (!$court) {
+            return response()->json(['status' => 'error', 'message' => 'Court not found.'], 404);
+        }
+        $bookings = Book::where('court_id', $validated['court_id'])
+            ->where('date', $validated['date'])
+            ->whereNotIn('status', ['Rejected', 'Cancelled'])
+            ->get(['start_time', 'end_time']);
+        return response()->json([
+            'status' => 'success',
+            'booked_times' => $bookings,
+        ], 200);
+    }
+
+    /**
      * Vendor approves a booking (used for Cash: Pending → Confirmed).
      * eSewa bookings are auto-confirmed on payment; only Pending Cash bookings need approval.
      */
