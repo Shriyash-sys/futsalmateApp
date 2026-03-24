@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Throwable;
+use Carbon\Carbon;
 use App\Models\Book;
 use App\Models\User;
 use App\Models\Court;
@@ -17,23 +18,352 @@ class VendorControllerAPI extends Controller
     // ----------------------------------------Vendor Dashboard----------------------------------------
     public function vendorDashboard(Request $request)
     {
-        $vendor = $request->user();
-        if (!$vendor) {
+        $actor = $request->user();
+        if (!$actor) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'Unauthenticated.'
             ], 401);
         }
 
-        // You can add more vendor-specific dashboard data here
+        if (!($actor instanceof Vendor)) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'This endpoint is only for vendors.'
+            ], 403);
+        }
 
-        return response()->json([
-            'status' => 'success',
-            'data' => [
-                'vendor' => $vendor,
-                // Add other dashboard data as needed
-            ]
-        ], 200);
+        try {
+            $stats = $this->buildVendorDashboardStats($actor);
+
+            return response()->json([
+                'status' => 'success',
+                'data' => [
+                    'vendor' => $actor,
+                    'stats' => $stats,
+                ]
+            ], 200);
+        } catch (Throwable $e) {
+            Log::error('vendorDashboard failed', ['error' => $e->getMessage()]);
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to load dashboard stats.'
+            ], 500);
+        }
+    }
+
+    /**
+     * Aggregated metrics for the vendor home dashboard (Flutter + native).
+     */
+    private function buildVendorDashboardStats(Vendor $vendor): array
+    {
+        $now = Carbon::now(config('app.timezone'));
+        $todayStr = $now->format('Y-m-d');
+        $yesterdayStr = $now->copy()->subDay()->format('Y-m-d');
+
+        $courts = Court::where('vendor_id', $vendor->id)->get();
+        $courtIds = $courts->pluck('id');
+        if ($courtIds->isEmpty()) {
+            return $this->emptyDashboardStats();
+        }
+
+        $bookings = Book::whereIn('court_id', $courtIds)->with('court')->get();
+
+        $activeCourts = $courts->filter(function ($c) {
+            return strtolower((string) $c->status) === 'active';
+        });
+
+        $openHoursPerDay = 0.0;
+        foreach ($activeCourts as $court) {
+            $openHoursPerDay += $this->courtDailyOpenHours($court);
+        }
+
+        $todayBookings = $this->filterBookingsForDate($bookings, $todayStr);
+        $yesterdayBookings = $this->filterBookingsForDate($bookings, $yesterdayStr);
+
+        $todayBookingsCount = $todayBookings->count();
+
+        $activeUsersToday = count($this->distinctCustomerKeys($todayBookings));
+        $activeUsersYesterday = count($this->distinctCustomerKeys($yesterdayBookings));
+        $userDelta = $activeUsersToday - $activeUsersYesterday;
+        if ($userDelta > 0) {
+            $activeUsersSubtext = '+' . $userDelta . ' vs yesterday';
+        } elseif ($userDelta < 0) {
+            $activeUsersSubtext = $userDelta . ' vs yesterday';
+        } else {
+            $activeUsersSubtext = 'Same as yesterday';
+        }
+
+        $occupiedNow = 0;
+        foreach ($activeCourts as $court) {
+            if ($this->courtOccupiedNow($court->id, $bookings, $now, $todayStr)) {
+                $occupiedNow++;
+            }
+        }
+        $activeCourtCount = $activeCourts->count();
+        $courtsAvailableNow = max(0, $activeCourtCount - $occupiedNow);
+        $todaySubtext = $activeCourtCount === 0
+            ? 'No active courts'
+            : ($courtsAvailableNow === 0
+                ? 'All courts in use'
+                : $courtsAvailableNow . ' court' . ($courtsAvailableNow === 1 ? '' : 's') . ' free now');
+
+        $earningsToday = round($this->sumPaidEarnings($todayBookings), 2);
+        $earningsYesterday = round($this->sumPaidEarnings($yesterdayBookings), 2);
+        $earningsChangePct = $this->percentChange($earningsYesterday, $earningsToday);
+
+        $hoursToday = round($this->sumBookingHours($todayBookings), 2);
+        $hoursYesterday = round($this->sumBookingHours($yesterdayBookings), 2);
+        $hoursChangePct = $this->percentChange($hoursYesterday, $hoursToday);
+
+        $todayStart = $now->copy()->startOfDay();
+        // Rolling 7 days including today vs the 7 days immediately before (matches typical “this week vs last week”).
+        $currWeekStartStr = $todayStart->copy()->subDays(6)->format('Y-m-d');
+        $currWeekEndStr = $todayStr;
+        $prevWeekStartStr = $todayStart->copy()->subDays(13)->format('Y-m-d');
+        $prevWeekEndStr = $todayStart->copy()->subDays(7)->format('Y-m-d');
+
+        $weekBooked = $this->sumBookingHoursBetweenDates($bookings, $currWeekStartStr, $currWeekEndStr);
+        $prevWeekBooked = $this->sumBookingHoursBetweenDates($bookings, $prevWeekStartStr, $prevWeekEndStr);
+
+        $weekOpen = $openHoursPerDay * 7.0;
+        $weekUtil = $weekOpen > 0 ? round($weekBooked / $weekOpen * 100.0, 1) : 0.0;
+        $prevUtil = $weekOpen > 0 ? round($prevWeekBooked / $weekOpen * 100.0, 1) : 0.0;
+        $utilDelta = round($weekUtil - $prevUtil, 1);
+
+        return [
+            'today_bookings' => $todayBookingsCount,
+            'today_bookings_subtext' => $todaySubtext,
+            'active_users_today' => $activeUsersToday,
+            'active_users_subtext' => $activeUsersSubtext,
+            'active_courts' => $activeCourtCount,
+            'courts_occupied_now' => $occupiedNow,
+            'courts_available_now' => $courtsAvailableNow,
+            'total_earnings_today' => $earningsToday,
+            'hours_booked_today' => $hoursToday,
+            'earnings_change_vs_yesterday_percent' => $earningsChangePct,
+            'hours_change_vs_yesterday_percent' => $hoursChangePct,
+            'weekly_utilization_percent' => $weekUtil,
+            'weekly_utilization_delta_vs_prev_week' => $utilDelta,
+            'weekly_open_hours' => round($weekOpen, 2),
+            'weekly_booked_hours' => round($weekBooked, 2),
+        ];
+    }
+
+    private function emptyDashboardStats(): array
+    {
+        return [
+            'today_bookings' => 0,
+            'today_bookings_subtext' => 'Add a court to get started',
+            'active_users_today' => 0,
+            'active_users_subtext' => 'No data yet',
+            'active_courts' => 0,
+            'courts_occupied_now' => 0,
+            'courts_available_now' => 0,
+            'total_earnings_today' => 0.0,
+            'hours_booked_today' => 0.0,
+            'earnings_change_vs_yesterday_percent' => null,
+            'hours_change_vs_yesterday_percent' => null,
+            'weekly_utilization_percent' => 0.0,
+            'weekly_utilization_delta_vs_prev_week' => 0.0,
+            'weekly_open_hours' => 0.0,
+            'weekly_booked_hours' => 0.0,
+        ];
+    }
+
+    private function filterBookingsForDate($bookings, string $date)
+    {
+        return $bookings->filter(function (Book $b) use ($date) {
+            return $b->date === $date && $this->bookingCountsForDashboard($b);
+        })->values();
+    }
+
+    private function bookingCountsForDashboard(Book $b): bool
+    {
+        return !in_array($b->status, ['Cancelled', 'Rejected'], true);
+    }
+
+    /**
+     * @return array<string, bool>
+     */
+    private function distinctCustomerKeys($bookings): array
+    {
+        $keys = [];
+        foreach ($bookings as $b) {
+            if (!$this->bookingCountsForDashboard($b)) {
+                continue;
+            }
+            if ($b->user_id) {
+                $keys['u' . $b->user_id] = true;
+            } elseif ($b->customer_phone && trim((string) $b->customer_phone) !== '') {
+                $keys['p' . preg_replace('/\D+/', '', (string) $b->customer_phone)] = true;
+            } elseif ($b->customer_name && trim((string) $b->customer_name) !== '') {
+                $keys['n' . mb_strtolower(trim((string) $b->customer_name))] = true;
+            }
+        }
+
+        return $keys;
+    }
+
+    private function sumPaidEarnings($bookings): float
+    {
+        $sum = 0.0;
+        foreach ($bookings as $b) {
+            if (!$this->bookingCountsForDashboard($b)) {
+                continue;
+            }
+            if (strcasecmp((string) $b->payment_status, 'Paid') !== 0) {
+                continue;
+            }
+            $sum += $this->resolveBookingPrice($b);
+        }
+
+        return $sum;
+    }
+
+    private function resolveBookingPrice(Book $b): float
+    {
+        $raw = $b->price;
+        if ($raw !== null && trim((string) $raw) !== '') {
+            return (float) preg_replace('/[^0-9.]/', '', (string) $raw);
+        }
+        if ($b->court && $b->court->price !== null && trim((string) $b->court->price) !== '') {
+            return (float) preg_replace('/[^0-9.]/', '', (string) $b->court->price);
+        }
+
+        return 0.0;
+    }
+
+    private function sumBookingHours($bookings): float
+    {
+        $sum = 0.0;
+        foreach ($bookings as $b) {
+            if (!$this->bookingCountsForDashboard($b)) {
+                continue;
+            }
+            $sum += $this->bookingDurationHours($b->start_time, $b->end_time);
+        }
+
+        return $sum;
+    }
+
+    private function sumBookingHoursBetweenDates($bookings, string $startStr, string $endStr): float
+    {
+        $sum = 0.0;
+        foreach ($bookings as $b) {
+            if (!$this->bookingCountsForDashboard($b) || !$b->date) {
+                continue;
+            }
+            if ($b->date < $startStr || $b->date > $endStr) {
+                continue;
+            }
+            $sum += $this->bookingDurationHours($b->start_time, $b->end_time);
+        }
+
+        return $sum;
+    }
+
+    private function bookingDurationHours(?string $start, ?string $end): float
+    {
+        $s = $this->parseTimeOnBaseDate($start);
+        $e = $this->parseTimeOnBaseDate($end);
+        if (!$s || !$e) {
+            return 0.0;
+        }
+        if ($e->lessThanOrEqualTo($s)) {
+            return 0.0;
+        }
+
+        return $s->diffInMinutes($e) / 60.0;
+    }
+
+    private function parseTimeOnBaseDate(?string $time): ?Carbon
+    {
+        if ($time === null || trim($time) === '') {
+            return null;
+        }
+        $t = trim($time);
+        if (strlen($t) >= 8 && preg_match('/^\d{2}:\d{2}:\d{2}/', $t)) {
+            $t = substr($t, 0, 8);
+        }
+        $base = '2000-01-01 ';
+        try {
+            return Carbon::parse($base . $t, config('app.timezone'));
+        } catch (Throwable $e) {
+            return null;
+        }
+    }
+
+    private function courtDailyOpenHours(Court $court): float
+    {
+        $open = $court->opening_time;
+        $close = $court->closing_time;
+        if ($open === null || $close === null || trim((string) $open) === '' || trim((string) $close) === '') {
+            return 16.0;
+        }
+        try {
+            $o = Carbon::parse(trim((string) $open), config('app.timezone'));
+            $c = Carbon::parse(trim((string) $close), config('app.timezone'));
+        } catch (Throwable $e) {
+            return 16.0;
+        }
+        $oMin = $o->hour * 60 + $o->minute;
+        $cMin = $c->hour * 60 + $c->minute;
+        if ($cMin <= $oMin) {
+            $cMin += 24 * 60;
+        }
+
+        return ($cMin - $oMin) / 60.0;
+    }
+
+    private function courtOccupiedNow(int $courtId, $bookings, Carbon $now, string $todayStr): bool
+    {
+        foreach ($bookings as $b) {
+            if ((int) $b->court_id !== $courtId) {
+                continue;
+            }
+            if ($b->date !== $todayStr || $b->status !== 'Confirmed') {
+                continue;
+            }
+            $start = $this->combineDateAndTime($b->date, $b->start_time);
+            $end = $this->combineDateAndTime($b->date, $b->end_time);
+            if ($start && $end && $now->greaterThanOrEqualTo($start) && $now->lessThanOrEqualTo($end)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function combineDateAndTime(?string $date, ?string $time): ?Carbon
+    {
+        if (!$date || !$time || trim($time) === '') {
+            return null;
+        }
+        $t = trim($time);
+        if (strlen($t) >= 8 && preg_match('/^\d{2}:\d{2}:\d{2}/', $t)) {
+            $t = substr($t, 0, 8);
+        }
+        try {
+            return Carbon::parse($date . ' ' . $t, config('app.timezone'));
+        } catch (Throwable $e) {
+            return null;
+        }
+    }
+
+    /**
+     * @return float|null null when comparison is not meaningful
+     */
+    private function percentChange(float $baseline, float $current): ?float
+    {
+        if ($baseline > 0.0) {
+            return round(($current - $baseline) / $baseline * 100.0, 1);
+        }
+        if ($current > 0.0) {
+            return 100.0;
+        }
+
+        return null;
     }
 
     /**
