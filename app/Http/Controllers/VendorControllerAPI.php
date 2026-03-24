@@ -112,11 +112,15 @@ class VendorControllerAPI extends Controller
                 $totalSpent = $userBookings->where('payment_status', 'Paid')->sum('price');
                 $lastBookingDate = $userBookings->max('date');
 
+                $fallbackPhone = $userBookings->pluck('customer_phone')
+                    ->filter(fn ($p) => $p !== null && trim((string) $p) !== '')
+                    ->first();
+
                 return [
                     'id' => $user->id,
                     'full_name' => $user->full_name,
                     'email' => $user->email,
-                    'phone' => $user->phone,
+                    'phone' => $user->phone ?: $fallbackPhone,
                     'profile_photo' => $user->profile_photo_url,
                     'email_verified_at' => $user->email_verified_at ? $user->email_verified_at->format('c') : null,
                     'statistics' => [
