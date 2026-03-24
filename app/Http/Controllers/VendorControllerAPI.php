@@ -108,6 +108,10 @@ class VendorControllerAPI extends Controller
                 ? 'All courts in use'
                 : $courtsAvailableNow . ' court' . ($courtsAvailableNow === 1 ? '' : 's') . ' free now');
 
+        $revenueToday = round($this->sumGrossRevenueForBookings($todayBookings), 2);
+        $revenueYesterday = round($this->sumGrossRevenueForBookings($yesterdayBookings), 2);
+        $revenueChangePct = $this->percentChange($revenueYesterday, $revenueToday);
+
         $earningsToday = round($this->sumPaidEarnings($todayBookings), 2);
         $earningsYesterday = round($this->sumPaidEarnings($yesterdayBookings), 2);
         $earningsChangePct = $this->percentChange($earningsYesterday, $earningsToday);
@@ -139,8 +143,10 @@ class VendorControllerAPI extends Controller
             'active_courts' => $activeCourtCount,
             'courts_occupied_now' => $occupiedNow,
             'courts_available_now' => $courtsAvailableNow,
+            'total_revenue_today' => $revenueToday,
             'total_earnings_today' => $earningsToday,
             'hours_booked_today' => $hoursToday,
+            'revenue_change_vs_yesterday_percent' => $revenueChangePct,
             'earnings_change_vs_yesterday_percent' => $earningsChangePct,
             'hours_change_vs_yesterday_percent' => $hoursChangePct,
             'weekly_utilization_percent' => $weekUtil,
@@ -160,8 +166,10 @@ class VendorControllerAPI extends Controller
             'active_courts' => 0,
             'courts_occupied_now' => 0,
             'courts_available_now' => 0,
+            'total_revenue_today' => 0.0,
             'total_earnings_today' => 0.0,
             'hours_booked_today' => 0.0,
+            'revenue_change_vs_yesterday_percent' => null,
             'earnings_change_vs_yesterday_percent' => null,
             'hours_change_vs_yesterday_percent' => null,
             'weekly_utilization_percent' => 0.0,
@@ -213,6 +221,22 @@ class VendorControllerAPI extends Controller
                 continue;
             }
             if (strcasecmp((string) $b->payment_status, 'Paid') !== 0) {
+                continue;
+            }
+            $sum += $this->resolveBookingPrice($b);
+        }
+
+        return $sum;
+    }
+
+    /**
+     * Gross value of bookings (slot price), including unpaid / pending.
+     */
+    private function sumGrossRevenueForBookings($bookings): float
+    {
+        $sum = 0.0;
+        foreach ($bookings as $b) {
+            if (!$this->bookingCountsForDashboard($b)) {
                 continue;
             }
             $sum += $this->resolveBookingPrice($b);
