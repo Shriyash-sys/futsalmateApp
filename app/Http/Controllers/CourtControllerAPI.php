@@ -50,6 +50,16 @@ class CourtControllerAPI extends Controller
                 ->orderBy('start_time', 'asc')
                 ->get(['start_time', 'end_time', 'customer_name']);
 
+            $otherCourts = [];
+            if ($court->vendor_id) {
+                $otherCourts = Court::where('vendor_id', $court->vendor_id)
+                    ->where('id', '!=', $court->id)
+                    ->whereIn('status', ['active', 'Active'])
+                    ->orderBy('court_name')
+                    ->get()
+                    ->all();
+            }
+
             $courtDetail = [
                 'id' => $court->id,
                 'court_name' => $court->court_name,
@@ -70,6 +80,7 @@ class CourtControllerAPI extends Controller
                     'profile_photo_url' => $court->vendor->profile_photo_url,
                 ] : null,
                 'today_bookings' => $todayBookings,
+                'other_courts' => $otherCourts,
             ];
 
             return response()->json([
