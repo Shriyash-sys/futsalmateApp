@@ -301,6 +301,15 @@ class VendorBookingsControllerAPI extends Controller
             ], 422);
         }
 
+        $tz = config('app.timezone');
+        $bookingStart = \Carbon\Carbon::parse($validated['date'] . ' ' . $startTime24, $tz);
+        if ($bookingStart->isToday() && $bookingStart->isPast()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'For today, start time cannot be in the past.',
+            ], 422);
+        }
+
         if ($court->opening_time && $court->closing_time) {
             if ($startTime24 < $court->opening_time || $endTime24 > $court->closing_time) {
                 return response()->json([
