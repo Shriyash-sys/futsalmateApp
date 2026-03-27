@@ -184,6 +184,8 @@ class BookControllerAPI extends Controller
             'status' => 'Pending',
         ]);
 
+        $booking->load('court');
+
         // Notify vendor that a new booking was created
         $this->notifyVendorOfNewBooking($booking);
 
