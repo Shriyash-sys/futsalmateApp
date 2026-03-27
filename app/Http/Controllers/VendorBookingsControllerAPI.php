@@ -399,6 +399,13 @@ class VendorBookingsControllerAPI extends Controller
             ], 403);
         }
 
+        if (strcasecmp((string) ($booking->payment_status ?? ''), 'Paid') === 0) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Payment is already marked as Paid and cannot be changed.',
+            ], 400);
+        }
+
         $validated = $request->validate([
             'payment_status' => 'required|string|in:Pending,Paid,Unpaid',
         ]);
