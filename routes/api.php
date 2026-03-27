@@ -119,6 +119,8 @@ Route::middleware(['auth:sanctum', 'vendor'])->controller(VendorControllerAPI::c
 Route::middleware(['auth:sanctum', 'vendor'])->controller(VendorProfileControllerAPI::class)->group(function () {
     Route::get('/vendor/profile', 'show');
     Route::match(['put', 'patch'], '/vendor/profile', 'editProfile');
+    Route::post('/vendor/profile/photo', 'addProfilePhoto');
+    Route::delete('/vendor/profile/photo', 'deleteProfilePhoto');
 });
 
 // Logout endpoints (require authentication)

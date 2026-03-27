@@ -30,7 +30,8 @@ class Vendor extends Authenticatable implements MustVerifyEmail
 
     protected $hidden = [
         'password',
-        'remember_token'
+        'remember_token',
+        'profile_photo_path',
     ];
 
     protected static function boot()
