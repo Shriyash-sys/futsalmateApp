@@ -23,6 +23,8 @@ class Vendor extends Authenticatable implements MustVerifyEmail
         'phone',
         'address',
         'owner_name',
+        'profile_photo_path',
+        'profile_photo_url',
         'fcm_token',
     ];
 

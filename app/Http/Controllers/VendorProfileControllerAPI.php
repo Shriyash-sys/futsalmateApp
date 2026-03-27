@@ -48,6 +48,8 @@ class VendorProfileControllerAPI extends Controller
 			],
 			'phone' => 'nullable|string|max:20',
 			'address' => 'nullable|string|max:255',
+			'owner_name' => 'nullable|string|max:255',
+			'profile_photo' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
 		]);
 
 		if (array_key_exists('name', $validated)) {
@@ -64,6 +66,17 @@ class VendorProfileControllerAPI extends Controller
 
 		if (array_key_exists('address', $validated)) {
 			$vendor->address = $validated['address'];
+		}
+
+		if (array_key_exists('owner_name', $validated)) {
+			$vendor->owner_name = $validated['owner_name'];
+		}
+
+		if (array_key_exists('profile_photo', $validated)) {
+			$photo = $validated['profile_photo'];
+			$path = $photo->store('vendor_profiles', 'public');
+			$vendor->profile_photo_path = $path;
+			$vendor->profile_photo_url = asset('storage/' . $path);
 		}
 
 		$vendor->save();
