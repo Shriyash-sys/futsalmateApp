@@ -67,6 +67,7 @@ class CourtControllerAPI extends Controller
                     'name' => $court->vendor->name,
                     'phone' => $court->vendor->phone,
                     'email' => $court->vendor->email,
+                    'profile_photo_url' => $court->vendor->profile_photo_url,
                 ] : null,
                 'today_bookings' => $todayBookings,
             ];
