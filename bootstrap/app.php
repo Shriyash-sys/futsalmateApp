@@ -12,6 +12,8 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // So $request->root() is https://your-domain behind nginx / load balancers (X-Forwarded-*).
+        $middleware->trustProxies(at: '*');
         $middleware->alias([
             'vendor' => \App\Http\Middleware\EnsureUserisVendor::class,
             'customer' => \App\Http\Middleware\EnsureUserisCustomer::class,

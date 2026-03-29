@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Models\User;
 use App\Models\Vendor;
 use Laravel\Sanctum\Sanctum;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 use Laravel\Sanctum\PersonalAccessToken;
 
@@ -25,5 +26,9 @@ class AppServiceProvider extends ServiceProvider
     {
         // Configure Sanctum to use the PersonalAccessToken model
         Sanctum::usePersonalAccessTokenModel(PersonalAccessToken::class);
+
+        if ($this->app->environment('production')) {
+            URL::forceScheme('https');
+        }
     }
 }
