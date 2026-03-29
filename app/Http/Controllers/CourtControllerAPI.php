@@ -18,7 +18,8 @@ class CourtControllerAPI extends Controller
      */
     public function showBookCourt()
     {
-        $courts = Court::where('status', 'active')->get();
+        // Match detail endpoint: status may be stored as 'active' or 'Active'.
+        $courts = Court::whereIn('status', ['active', 'Active'])->get();
         return response()->json([
             'status' => 'success',
             'courts' => $courts
