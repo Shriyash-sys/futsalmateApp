@@ -208,6 +208,16 @@ class BookControllerAPI extends Controller
         $apiPublicBase = (is_string($override) && $override !== '')
             ? rtrim($override, '/')
             : rtrim($request->root(), '/');
+
+        // eSewa/live browsers follow https. If this base is http:// (common when the proxy
+        // does not set X-Forwarded-Proto), port 80 may hit Tomcat/Java while Laravel is only
+        // behind https — WebView then shows Tomcat 404. Upgrade to https for real hosts.
+        $host = strtolower((string) (parse_url($apiPublicBase, PHP_URL_HOST) ?? ''));
+        $loopbackHosts = ['localhost', '127.0.0.1', '10.0.2.2', '::1'];
+        if ($host !== '' && ! in_array($host, $loopbackHosts, true)) {
+            $apiPublicBase = preg_replace('#\Ahttp://#i', 'https://', $apiPublicBase, 1);
+        }
+
         $success_url = $apiPublicBase . '/api/book/esewa/success';
         $failure_url = $apiPublicBase . '/api/book/esewa/failure';
         $signed_field_names = "total_amount,transaction_uuid,product_code";
