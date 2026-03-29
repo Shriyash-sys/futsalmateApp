@@ -204,8 +204,10 @@ class BookControllerAPI extends Controller
         $product_code = config('services.esewa.merchant_code', 'EPAYTEST');
         $product_service_charge = 0;
         $product_delivery_charge = 0;
-        $success_url = url('/api/book/esewa/success');
-        $failure_url = url('/api/book/esewa/failure');
+        $apiPublicBase = (string) config('services.esewa.callback_base_url', '');
+        $apiPublicBase = rtrim($apiPublicBase, '/');
+        $success_url = $apiPublicBase . '/api/book/esewa/success';
+        $failure_url = $apiPublicBase . '/api/book/esewa/failure';
         $signed_field_names = "total_amount,transaction_uuid,product_code";
 
         $message = "total_amount=$total_amount,transaction_uuid=$transaction_uuid,product_code=$product_code";

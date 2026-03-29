@@ -49,6 +49,16 @@ return [
             'https://rc-epay.esewa.com.np/api/epay/main/v2/form',
         ),
         'environment' => env('ESEWA_ENVIRONMENT', 'test'),
+        /*
+        | Base URL that eSewa redirects the customer's browser to (success/failure).
+        | MUST be the public HTTPS origin of this API (no trailing slash, no /api).
+        | If APP_URL on the server is http://127.0.0.1 or an internal host, set
+        | APP_URL_PUBLIC to the same host your mobile app uses, e.g. https://futsalmateapp.sameem.in.net
+        */
+        'callback_base_url' => rtrim(
+            (string) (env('APP_URL_PUBLIC') ?: env('APP_URL', 'http://localhost')),
+            '/',
+        ),
     ],
 
 ];
