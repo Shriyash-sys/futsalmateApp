@@ -46,7 +46,7 @@ it('marks booking paid and confirmed on eSewa success', function () {
     $payload = ['status' => 'COMPLETE', 'transaction_uuid' => $txn];
     $encoded = base64_encode(json_encode($payload));
 
-    $successResp = $this->getJson('/api/book/esewa/success?data=' . urlencode($encoded));
+    $successResp = $this->getJson('/api/payment/esewa/success?data=' . urlencode($encoded));
     $successResp->assertStatus(200)
         ->assertJsonFragment(['status' => 'success'])
         ->assertJsonFragment(['message' => 'Payment successful and booking confirmed.']);

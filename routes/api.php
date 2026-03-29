@@ -40,6 +40,10 @@ Route::middleware(['auth:sanctum', 'customer'])->get('/court-detail/{courtId}', 
 
 // eSewa callback endpoints (do NOT require authentication)
 Route::controller(BookControllerAPI::class)->group(function () {
+    // Prefer these: same /api prefix as the mobile app (many hosts only route /api/* to PHP).
+    Route::match(['get', 'post'], '/payment/esewa/success', 'success');
+    Route::match(['get', 'post'], '/payment/esewa/failure', 'failure');
+    // Legacy paths (still registered for old eSewa redirect URLs).
     Route::match(['get', 'post'], '/book/esewa/success', 'success');
     Route::match(['get', 'post'], '/book/esewa/failure', 'failure');
     // booking reminders via cron (uses REMINDER_CRON_KEY)

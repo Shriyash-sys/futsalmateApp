@@ -218,8 +218,15 @@ class BookControllerAPI extends Controller
             $apiPublicBase = preg_replace('#\Ahttp://#i', 'https://', $apiPublicBase, 1);
         }
 
-        $success_url = $apiPublicBase . '/api/book/esewa/success';
-        $failure_url = $apiPublicBase . '/api/book/esewa/failure';
+        // Avoid https://host/api/api/book/... if $request->root() wrongly ends with /api
+        $apiPublicBase = rtrim($apiPublicBase, '/');
+        if (str_ends_with($apiPublicBase, '/api')) {
+            $apiPublicBase = substr($apiPublicBase, 0, -strlen('/api'));
+        }
+
+        // Under api.php so full paths are /api/payment/esewa/* (works when only /api/* hits Laravel).
+        $success_url = $apiPublicBase . '/api/payment/esewa/success';
+        $failure_url = $apiPublicBase . '/api/payment/esewa/failure';
         $signed_field_names = "total_amount,transaction_uuid,product_code";
 
         $message = "total_amount=$total_amount,transaction_uuid=$transaction_uuid,product_code=$product_code";
