@@ -111,7 +111,8 @@ class SendBookingReminders extends Command
             $body = "Your match at {$courtName} starts in {$minutes} minutes. Get ready!";
 
             $messaging = app(Messaging::class);
-            $message = CloudMessage::withTarget('token', $user->fcm_token)
+            $message = CloudMessage::new()
+                ->toToken($user->fcm_token)
                 ->withNotification(
                     Notification::create($title, $body)
                 )

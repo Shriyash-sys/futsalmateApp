@@ -67,18 +67,20 @@ class BookControllerAPI extends Controller
             // Send to player
             if ($user && $user->fcm_token) {
                 $message = CloudMessage::new()
+                    ->toToken($user->fcm_token)
                     ->withNotification(Notification::create($title, $body));
-                $messaging->send($message->withChangedTarget('token', $user->fcm_token));
+                $messaging->send($message);
             }
 
             // Optionally also notify vendor that their court has a match starting soon
             if ($court && $court->vendor && $court->vendor->fcm_token) {
                 $vendorMessage = CloudMessage::new()
+                    ->toToken($court->vendor->fcm_token)
                     ->withNotification(Notification::create(
                         'Upcoming Booking',
                         "A booking at {$courtName} starts in {$minutesBefore} minutes."
                     ));
-                $messaging->send($vendorMessage->withChangedTarget('token', $court->vendor->fcm_token));
+                $messaging->send($vendorMessage);
             }
 
             $booking->$flag = true;
@@ -233,7 +235,7 @@ class BookControllerAPI extends Controller
         // eSewa/live browsers follow https. If this base is http:// (common when the proxy
         // does not set X-Forwarded-Proto), port 80 may hit Tomcat/Java while Laravel is only
         // behind https — WebView then shows Tomcat 404. Upgrade to https for real hosts.
-        $host = strtolower((string) (parse_url($apiPublicBase, PHP_URL_HOST) ?? ''));
+        $host = strtolower((string) (parse_url($apiPublicBase, \PHP_URL_HOST) ?? ''));
         $loopbackHosts = ['localhost', '127.0.0.1', '10.0.2.2', '::1'];
         if ($host !== '' && ! in_array($host, $loopbackHosts, true)) {
             $apiPublicBase = preg_replace('#\Ahttp://#i', 'https://', $apiPublicBase, 1);
@@ -302,9 +304,10 @@ class BookControllerAPI extends Controller
             $body = "{$userName} booked {$courtName} on {$date} from {$start} to {$end}. Payment: Cash.";
 
             $message = CloudMessage::new()
+                ->toToken($vendor->fcm_token)
                 ->withNotification(Notification::create($title, $body));
 
-            $messaging->send($message->withChangedTarget('token', $vendor->fcm_token));
+            $messaging->send($message);
         } catch (\Throwable $e) {
             // Fail silently – booking should still succeed even if notification fails.
         }
@@ -337,9 +340,10 @@ class BookControllerAPI extends Controller
             $body = "{$userName} confirmed {$courtName} on {$date} from {$start} to {$end}. Payment: eSewa.";
 
             $message = CloudMessage::new()
+                ->toToken($vendor->fcm_token)
                 ->withNotification(Notification::create($title, $body));
 
-            $messaging->send($message->withChangedTarget('token', $vendor->fcm_token));
+            $messaging->send($message);
         } catch (\Throwable $e) {
             //
         }
