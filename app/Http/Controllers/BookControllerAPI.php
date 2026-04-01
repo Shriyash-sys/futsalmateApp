@@ -32,8 +32,8 @@ class BookControllerAPI extends Controller
 
         $now = Carbon::now();
 
-        $this->sendRemindersForOffset($messaging, 30, 'reminder_30_sent', $now);
-        $this->sendRemindersForOffset($messaging, 10, 'reminder_10_sent', $now);
+        $this->sendRemindersForOffset($messaging, 30, 'reminder_30min_sent', $now);
+        $this->sendRemindersForOffset($messaging, 10, 'reminder_10min_sent', $now);
 
         return response()->json(['status' => 'success'], 200);
     }

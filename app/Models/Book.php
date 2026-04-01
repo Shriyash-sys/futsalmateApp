@@ -23,8 +23,8 @@ class Book extends Model
         'transaction_uuid',
         'user_id',
         'court_id',
-        'reminder_30_sent',
-        'reminder_10_sent',
+        'reminder_30min_sent',
+        'reminder_10min_sent',
     ];
 
     protected $casts = [
