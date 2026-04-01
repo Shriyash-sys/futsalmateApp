@@ -1,8 +1,8 @@
 <?php
 
-use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Database\Migrations\Migration;
 
 return new class extends Migration
 {
@@ -12,7 +12,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('books', function (Blueprint $table) {
-            $table->dateTime('payment_expires_at')->nullable()->index()->after('payment_status');
+            if (!Schema::hasColumn('books', 'payment_expires_at')) {
+                $table->dateTime('payment_expires_at')->nullable()->index()->after('payment_status');
+            }
         });
     }
 
@@ -22,7 +24,9 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('books', function (Blueprint $table) {
-            $table->dropColumn('payment_expires_at');
+            if (Schema::hasColumn('books', 'payment_expires_at')) {
+                $table->dropColumn('payment_expires_at');
+            }
         });
     }
 };
