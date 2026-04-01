@@ -100,6 +100,8 @@ class BookControllerAPI extends Controller
             'payment' => 'required|string|in:eSewa,Cash',
         ]);
 
+        $holdMinutes = (int) config('services.esewa.hold_minutes', 10);
+
         $user = $request->user();
         if (!$user) {
             return response()->json([
@@ -151,9 +153,27 @@ class BookControllerAPI extends Controller
             ], 400);
         }
 
+        $now = Carbon::now();
+
         $hasConflict = Book::where('court_id', $validated['court_id'])
             ->where('date', $validated['date'])
             ->whereNotIn('status', ['Cancelled', 'Rejected'])
+            ->where(function ($q) use ($now) {
+                $q->where('status', 'Confirmed')
+                    ->orWhere(function ($q) use ($now) {
+                        $q->where('status', 'Pending')
+                            ->where(function ($q) use ($now) {
+                                $q->where('payment', '!=', 'eSewa')
+                                    ->orWhere(function ($q) use ($now) {
+                                        $q->where('payment', 'eSewa')
+                                            ->where(function ($q) use ($now) {
+                                                $q->whereNull('payment_expires_at')
+                                                    ->orWhere('payment_expires_at', '>', $now);
+                                            });
+                                    });
+                            });
+                    });
+            })
             ->where(function ($query) use ($validated) {
                 $query->where('start_time', '<', $validated['end_time'])
                     ->where('end_time', '>', $validated['start_time']);
@@ -181,15 +201,16 @@ class BookControllerAPI extends Controller
             'user_id' => $user->id,
             'price' => $court->price,
             'payment_status' => 'Pending',
+            'payment_expires_at' => $validated['payment'] === 'eSewa'
+                ? Carbon::now()->addMinutes($holdMinutes)
+                : null,
             'status' => 'Pending',
         ]);
 
         $booking->load('court');
 
-        // Notify vendor that a new booking was created
-        $this->notifyVendorOfNewBooking($booking);
-
         if ($validated['payment'] === 'Cash') {
+            $this->notifyVendorOfCashBookingRequest($booking);
             return response()->json([
                 'status' => 'success',
                 'message' => 'Court booked successfully. Please pay in cash at the venue.',
@@ -255,9 +276,9 @@ class BookControllerAPI extends Controller
     }
 
     /**
-     * Send FCM notification to the vendor when a new booking is created.
+     * FCM: cash booking — pending payment / vendor may need to act.
      */
-    protected function notifyVendorOfNewBooking(Book $booking): void
+    protected function notifyVendorOfCashBookingRequest(Book $booking): void
     {
         try {
             $booking->loadMissing(['court.vendor', 'user']);
@@ -273,14 +294,12 @@ class BookControllerAPI extends Controller
 
             $courtName = optional($court)->court_name ?? 'your court';
             $userName = optional($booking->user)->full_name ?? 'A player';
-
             $date = $booking->date;
             $start = $booking->start_time;
             $end = $booking->end_time;
-            $payment = $booking->payment;
 
             $title = 'New Booking Request';
-            $body = "{$userName} booked {$courtName} on {$date} {$start}-{$end} ({$payment}).";
+            $body = "{$userName} booked {$courtName} on {$date} from {$start} to {$end}. Payment: Cash.";
 
             $message = CloudMessage::new()
                 ->withNotification(Notification::create($title, $body));
@@ -288,6 +307,41 @@ class BookControllerAPI extends Controller
             $messaging->send($message->withChangedTarget('token', $vendor->fcm_token));
         } catch (\Throwable $e) {
             // Fail silently – booking should still succeed even if notification fails.
+        }
+    }
+
+    /**
+     * FCM: eSewa payment completed — booking paid and confirmed in app rules.
+     */
+    protected function notifyVendorOfEsewaBookingConfirmed(Book $booking): void
+    {
+        try {
+            $booking->loadMissing(['court.vendor', 'user']);
+            $court = $booking->court;
+            $vendor = $court ? $court->vendor : null;
+
+            if (!$vendor || !$vendor->fcm_token) {
+                return;
+            }
+
+            /** @var Messaging $messaging */
+            $messaging = app(Messaging::class);
+
+            $courtName = optional($court)->court_name ?? 'your court';
+            $userName = optional($booking->user)->full_name ?? 'A player';
+            $date = $booking->date;
+            $start = $booking->start_time;
+            $end = $booking->end_time;
+
+            $title = 'New Booking Confirmed';
+            $body = "{$userName} confirmed {$courtName} on {$date} from {$start} to {$end}. Payment: eSewa.";
+
+            $message = CloudMessage::new()
+                ->withNotification(Notification::create($title, $body));
+
+            $messaging->send($message->withChangedTarget('token', $vendor->fcm_token));
+        } catch (\Throwable $e) {
+            //
         }
     }
 
@@ -362,14 +416,29 @@ class BookControllerAPI extends Controller
         }
 
         if (($data['status'] ?? null) === "COMPLETE") {
+            $now = Carbon::now();
+
             // eSewa success: set payment_status = Paid and status = Confirmed (no vendor approval needed).
             $updated = Book::where('transaction_uuid', $data['transaction_uuid'])
+                ->where('payment', 'eSewa')
                 ->where('payment_status', '!=', 'Paid')
-                ->where('status', '!=', 'Cancelled')
-                ->update(['payment_status' => 'Paid', 'status' => 'Confirmed']);
+                ->whereNotIn('status', ['Cancelled', 'Rejected'])
+                ->where(function ($q) use ($now) {
+                    $q->whereNull('payment_expires_at')
+                        ->orWhere('payment_expires_at', '>', $now);
+                })
+                ->update([
+                    'payment_status' => 'Paid',
+                    'status' => 'Confirmed',
+                    'payment_expires_at' => null,
+                ]);
 
             if ($updated) {
                 $booking = Book::where('transaction_uuid', $data['transaction_uuid'])->first();
+
+                if ($booking) {
+                    $this->notifyVendorOfEsewaBookingConfirmed($booking);
+                }
 
                 // Return simple HTML page that will be handled by the app's WebView
                 return response()->view('payment-success', [
@@ -405,8 +474,14 @@ class BookControllerAPI extends Controller
 
         // Mark the failed booking as cancelled and payment failed
         $updated = Book::where('transaction_uuid', $txn)
+            ->where('payment', 'eSewa')
             ->where('payment_status', '!=', 'Paid')
-            ->update(['payment_status' => 'Failed', 'status' => 'Cancelled']);
+            ->whereNotIn('status', ['Cancelled', 'Rejected'])
+            ->update([
+                'payment_status' => 'Failed',
+                'status' => 'Cancelled',
+                'payment_expires_at' => null,
+            ]);
 
         if ($updated) {
             return response()->json([
@@ -498,9 +573,27 @@ class BookControllerAPI extends Controller
             'date' => 'required|date',
         ]);
 
+        $now = Carbon::now();
+
         $bookings = Book::where('court_id', $validated['court_id'])
             ->where('date', $validated['date'])
             ->whereNotIn('status', ['Rejected', 'Cancelled'])
+            ->where(function ($q) use ($now) {
+                $q->where('status', 'Confirmed')
+                    ->orWhere(function ($q) use ($now) {
+                        $q->where('status', 'Pending')
+                            ->where(function ($q) use ($now) {
+                                $q->where('payment', '!=', 'eSewa')
+                                    ->orWhere(function ($q) use ($now) {
+                                        $q->where('payment', 'eSewa')
+                                            ->where(function ($q) use ($now) {
+                                                $q->whereNull('payment_expires_at')
+                                                    ->orWhere('payment_expires_at', '>', $now);
+                                            });
+                                    });
+                            });
+                    });
+            })
             ->get(['start_time', 'end_time', 'status']);
 
         return response()->json([
@@ -522,7 +615,11 @@ class BookControllerAPI extends Controller
             ], 401);
         }
 
-        $booking = Book::with('court')->find($id);
+        $booking = Book::with('court')
+            ->where('id', $id)
+            ->where('user_id', $user->id)
+            ->first();
+
         if (!$booking) {
             return response()->json([
                 'status' => 'error',

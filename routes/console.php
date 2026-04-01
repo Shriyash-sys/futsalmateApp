@@ -10,3 +10,6 @@ Artisan::command('inspire', function () {
 
 // Schedule booking reminders to run every 5 minutes
 Schedule::command('bookings:send-reminders')->everyFiveMinutes();
+
+// Cancel expired pending eSewa bookings (release reserved slots)
+Schedule::command('bookings:expire-esewa-holds')->everyMinute();

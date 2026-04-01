@@ -17,6 +17,7 @@ class Book extends Model
         'customer_phone',
         'payment',
         'payment_status',
+        'payment_expires_at',
         'price',
         'status',
         'transaction_uuid',
@@ -24,6 +25,10 @@ class Book extends Model
         'court_id',
         'reminder_30_sent',
         'reminder_10_sent',
+    ];
+
+    protected $casts = [
+        'payment_expires_at' => 'datetime',
     ];
 
     public function user()

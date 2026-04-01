@@ -42,6 +42,7 @@ return [
     'esewa' => [
         'merchant_code' => env('ESEWA_MERCHANT_CODE', 'EPAYTEST'),
         'secret_key' => env('ESEWA_SECRET_KEY', '8gBm/:&EnhH.1/q'),
+        'hold_minutes' => (int) env('ESEWA_HOLD_MINUTES', 10),
         // ePay v2 form POST target (not the transaction/status URL).
         // Test: https://developer.esewa.com.np/pages/Epay-V2
         'payment_url' => env(
